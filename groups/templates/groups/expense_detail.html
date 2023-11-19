@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load money %}
+
+{% block title %}{{ expense.name }} | Splitsilly{% endblock %}
+
+{% block body %}
+<h1>{{ expense.name }} on {{ expense.date.isoformat }}</h1>
+<a href="{{ expense.group.get_absolute_url }}">Back</a>
+<a href="{% url 'groups:expense_change' expense.id %}">Edit</a>
+
+<h2>Debts</h2>
+
+<p>{{ expense.payer }} paid {{ expense.amount|to_dollars }} for {{ expense.name }} on {{ expense.date.isoformat }}.</p>
+<ul>
+    {% for user, amount in debts.items %}
+    <li>{{ user }} owes {{ amount|to_dollars }}</li>
+    {% endfor %}
+</ul>
+
+<h2>Split</h2>
+
+<p>It was split {{ expense.split_method_friendly_name }}:</p>
+
+<table>
+    <tbody>
+        {% for split in expense.expensesplit_set.all %}
+        <tr>
+            <td>
+                {{ split.user }}
+                {% if split.user == expense.payer %}
+                (payer)
+                {% endif %}
+            </td>
+            <td>{{ split.formatted_shares }}</td>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,6 +1,70 @@
-<!DOCTYPE html>
-<html>
-    <body>
-        <h1>{{ group.name }}</h1>
-    </body>
-</html>
+{% extends "base.html" %}
+{% load money %}
+
+{% block title %}{{ group.name }} | Splitsilly{% endblock %}
+
+{% block head %}
+<style>
+.settings-link-container {
+    float: right;
+    font-size: 1rem;
+    font-weight: 400;
+}
+
+.expenses-table {
+    margin-top: 2rem;
+    width: 100%;
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<h1 class="heading">
+    {{ group.name }}
+    <small class="settings-link-container"><a href="{% url 'groups:group_settings' group.id %}">Group settings</a></small>
+</h1>
+
+{# show current debts #}
+<section>
+    <h2>Balances</h2>
+    <ul>
+        {% for users, amount in debts.items %}
+        <li>{{ users.0 }} owes {{ users.1 }} {{ amount|to_dollars }}</li>
+        {% endfor %}
+    </ul>
+</section>
+
+<section>
+    <h2 class="heading">Expenses </h2>
+
+    <p>
+        <a href="{% url 'groups:expense_create' group.id %}">Add expense</a>
+    </p>
+
+    {% for year, month, month_expenses in expenses %}
+    <table class="expenses-table">
+        <caption>{{ month }} {{ year }}</caption>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Expense</th>
+                <th>Amount</th>
+                <th>Paid by</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for expense in month_expenses %}
+            <tr>
+                <td>{{ expense.date.isoformat }}</td>
+                <td>{{ expense.name }}</td>
+                <td>{{ expense.amount|to_dollars }}</td>
+                <td>{{ expense.payer }}</td>
+                <td><a href="{{ expense.get_absolute_url }}">Details</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endfor %}
+</section>
+{% endblock %}

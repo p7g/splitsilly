@@ -1,5 +1,8 @@
 from collections import defaultdict
+from collections.abc import Sequence
 from datetime import date
+
+from django.core.exceptions import ValidationError
 
 from .models import ExpenseGroup, ExpenseGroupUser, Expense, ExpenseSplit
 
@@ -12,20 +15,36 @@ def add_expense_group_user(group: ExpenseGroup, user: str) -> ExpenseGroupUser:
     return group.expensegroupuser_set.create(name=user)
 
 
-def _validate_expense_split(type_: Expense.Type, amount: int, split: dict[str, int]):
+def sync_expense_group_users(group: ExpenseGroup, users: Sequence[str]) -> None:
+    new_users = set(users)
+    existing_users = set(group.expensegroupuser_set.values_list("name", flat=True))
+
+    to_remove = existing_users - new_users
+    group.expensegroupuser_set.filter(name__in=to_remove).delete()
+
+    to_add = new_users - existing_users
+    ExpenseGroupUser.objects.bulk_create(ExpenseGroupUser(group=group, name=name) for name in to_add)
+
+
+def validate_expense_split(type_: Expense.Type, amount: int, split: dict[str, int]):
     if type_ == Expense.Type.EXACT:
         if amount != sum(split.values()):
-            raise ValueError("Split does not add to amount")
+            raise ValidationError("Split does not add to amount")
     elif type_ == Expense.Type.PERCENTAGE:
         if sum(split.values()) != 100:
-            raise ValueError("Split percentages do not add to 100")
+            raise ValidationError("Split percentages do not add to 100")
+    elif type_ == Expense.Type.SHARES:
+        if all(shares == 0 for shares in split.values()):
+            raise ValidationError("The total number of shares must be at least 1")
+        if any(shares < 0 for shares in split.values()):
+            raise ValidationError("Shares must be positive of zero")
 
 
 def create_expense(
-    group: ExpenseGroup, type_: Expense.Type, payer: str, date: date, amount: int, split: dict[str, int]
+    group: ExpenseGroup, name: str, type_: Expense.Type, payer: str, date: date, amount: int, split: dict[str, int]
 ) -> Expense:
-    _validate_expense_split(type_, amount, split)
-    expense = Expense.objects.create(group=group, type=type_, payer=payer, date=date, amount=amount)
+    validate_expense_split(type_, amount, split)
+    expense = Expense.objects.create(group=group, name=name, type=type_, payer=payer, date=date, amount=amount)
 
     ExpenseSplit.objects.bulk_create(
         ExpenseSplit(expense=expense, user=user, shares=shares) for user, shares in split.items()
@@ -34,22 +53,61 @@ def create_expense(
     return expense
 
 
+def update_expense(
+    expense: Expense, name: str, type_: Expense.Type, payer: str, date: date, amount: int, split: dict[str, int]
+) -> None:
+    expense.name = name
+    expense.type = type_
+    expense.payer = payer
+    expense.date = date
+    expense.amount = amount
+    expense.save()
+
+    old_split = {split.user: split.shares for split in expense.expensesplit_set.all()}
+    expense.expensesplit_set.filter(user__in=old_split.keys() - split.keys()).delete()
+    existing_splits = expense.expensesplit_set.all()
+    for existing_split in existing_splits:
+        existing_split.shares = split[existing_split.user]
+    ExpenseSplit.objects.bulk_update(existing_splits, ["shares"])
+    ExpenseSplit.objects.bulk_create(
+        ExpenseSplit(expense=expense, user=user, shares=split[user])
+        for user in split.keys() - old_split.keys()
+    )
+
+
 def calculate_debts(group: ExpenseGroup) -> dict[tuple[str, str], int]:
-    debt_edges = {}
+    debts = {}
 
     for expense in group.expense_set.prefetch_related("expensesplit_set"):
         expense_debts = calculate_expense_debts(expense)
         for owee, debt in expense_debts.items():
             if owee == expense.payer:
                 continue
-            if (owee, expense.payer) not in debt_edges:
-                debt_edges[owee, expense.payer] = 0
-            debt_edges[owee, expense.payer] += debt
+            if (owee, expense.payer) not in debts:
+                debts[owee, expense.payer] = 0
+            debts[owee, expense.payer] += debt
 
-    return debt_edges
+    return debts
+
+
+def shares_are_money(expense_type: Expense.Type) -> bool:
+    return expense_type in (Expense.Type.EXACT, Expense.Type.ADJUSTMENT)
+
+
+def float_to_money(value: float) -> int:
+    return int(value * 100)
+
+
+def money_to_float(value: int) -> float:
+    return float(value) / 100
 
 
 def calculate_expense_debts(expense: Expense) -> dict[str, int]:
+    debts = _calculate_expense_debts(expense)
+    return {user: amount for user, amount in debts.items() if amount}
+
+
+def _calculate_expense_debts(expense: Expense) -> dict[str, int]:
     splits = expense.expensesplit_set.all()
 
     if expense.type == Expense.Type.EXACT:

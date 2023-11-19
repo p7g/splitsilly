@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="stylesheet" href="https://unpkg.com/normalize.css@8.0.1/normalize.css" />
+        <title>
+            {% block title %}Splitsilly{% endblock %}
+        </title>
+        <style>
+        body {
+            max-width: 80ch;
+            margin: 0 auto;
+            padding: 1rem 0.5rem;
+        }
+
+        table {
+            border-spacing: 0;
+        }
+        table td, table th {
+            padding: 0.25rem 0.5rem;
+        }
+        table th {
+            text-align: left;
+        }
+        table > tbody > tr:nth-child(odd) {
+            background-color: #e8e8e8;
+        }
+        table > caption {
+            caption-side: top;
+            text-align: left;
+            font-size: 1.5em;
+            margin-bottom: 0.25rem;
+        }
+
+        </style>
+        {% block head %}{% endblock %}
+    </head>
+    <body>
+        {% block body %}{% endblock %}
+    </body>
+</html>

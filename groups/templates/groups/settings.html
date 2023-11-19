@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Group settings | Splitsilly{% endblock %}
+
+{% block head %}
+<style>
+.settings-form > .form-row:not(:first-child) {
+    margin: 1rem 0;
+}
+.settings-form input[type="checkbox"] {
+    float: left;
+    margin-right: 0.5rem;
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<h1>Group settings for {{ group.name }}</h1>
+
+<form class="settings-form" action="" method="post">
+    {% csrf_token %}
+
+    <div class="form-row">
+        {{ form.non_field_errors }}
+    </div>
+
+    <div class="form-row">
+        {{ form.simplify_debts.errors }}
+        {{ form.simplify_debts }}
+        {{ form.simplify_debts.label_tag }}
+    </div>
+
+    <div class="form-row">
+        {{ form.users.errors }}
+        {{ form.users.label_tag }}
+        {{ form.users }}
+    </div>
+
+    <div class="form-row">
+        <input type="submit" value="Save" />
+    </div>
+</form>
+{% endblock %}

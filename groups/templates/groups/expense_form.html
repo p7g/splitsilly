@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Create expense | Splitsilly{% endblock %}
+
+{% block head %}
+<style>
+.form-row:not(:first-child) {
+    margin: 1rem 0 0;
+}
+
+legend + .form-row.form-row {
+    margin-top: 0;
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<h1>{% if expense %}Update{% else %}Create{% endif %} expense</h1>
+{% if expense %}
+<a href="{{ expense.get_absolute_url }}">Cancel</a>
+{% else %}
+<a href="{{ group.get_absolute_url }}">Cancel</a>
+{% endif %}
+
+<form method="POST" action="">
+    {% csrf_token %}
+
+    <div class="form-row">
+        {{ form.non_field_errors }}
+    </div>
+
+    {{ form.group.as_hidden }}
+
+    <div class="form-row">
+        {{ form.name.errors }}
+        {{ form.name.label_tag }}
+        {{ form.name }}
+    </div>
+
+    <div class="form-row">
+        {{ form.date.errors }}
+        {{ form.date.label_tag }}
+        {{ form.date }}
+    </div>
+
+    <div class="form-row">
+        {{ form.payer.errors }}
+        {{ form.payer.label_tag }}
+        {{ form.payer }}
+    </div>
+
+    <div class="form-row">
+        {{ form.amount.errors }}
+        {{ form.amount.label_tag }}
+        {{ form.amount }}
+    </div>
+
+    <div class="form-row">
+        {{ form.type.errors }}
+        {{ form.type.label_tag }}
+        {{ form.type }}
+    </div>
+
+    <fieldset class="form-row">
+        <legend>Split</legend>
+
+        {% for field in form.split_fields %}
+            <div class="form-row">
+                {{ field.errors }}
+                {{ field.label_tag }}
+                {{ field }}
+            </div>
+        {% endfor %}
+    </fieldset>
+
+    <div class="form-row">
+        <input type="submit" value="Save" />
+    </div>
+</form>
+{% endblock %}
