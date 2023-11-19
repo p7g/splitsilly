@@ -10,6 +10,7 @@ python = "^3.11"
 django = "^4.2.7"
 django-extensions = "^3.2.3"
 ipython = "^8.17.2"
+python-dotenv = "^1.0.0"
 
 
 [tool.poetry.group.dev.dependencies]
