@@ -1,9 +1,17 @@
 import enum
 
 from django.db import models
+from django.db.models import Exists, OuterRef
 from django.urls import reverse
 
+from identity.models import User
+
 from .templatetags.money import to_dollars
+
+
+class ExpenseGroupQuerySet(models.QuerySet):
+    def for_user(self, user: User):
+        return self.filter(Exists(ExpenseGroupUser.objects.filter(user=user, group=OuterRef("pk")).values("id")))
 
 
 class ExpenseGroup(models.Model):
@@ -13,19 +21,26 @@ class ExpenseGroup(models.Model):
     name = models.TextField()
     simplify_debts = models.BooleanField(default=False)
 
+    objects = models.Manager.from_queryset(ExpenseGroupQuerySet)()
+
     def get_absolute_url(self):
         return reverse("groups:group", args=(self.id,))
 
 
 class ExpenseGroupUser(models.Model):
     class Meta:
-        unique_together = [("group", "name")]
+        unique_together = [("group", "user")]
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     group = models.ForeignKey(ExpenseGroup, on_delete=models.CASCADE)
-    name = models.TextField()
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+
+
+class ExpenseQuerySet(models.QuerySet):
+    def for_user(self, user: User):
+        return self.filter(Exists(ExpenseGroup.objects.for_user(user).filter(id=OuterRef("group_id")).values("id")))
 
 
 class Expense(models.Model):
@@ -49,9 +64,12 @@ class Expense(models.Model):
     name = models.TextField()
     date = models.DateField()
     amount = models.IntegerField()
-    payer = models.TextField()
+    # FIXME: cascade?
+    payer = models.ForeignKey(User, on_delete=models.CASCADE)
     type = models.IntegerField(choices=EXPENSE_TYPE_CHOICES)
     is_settle_up = models.BooleanField(default=False)
+
+    objects = models.Manager.from_queryset(ExpenseQuerySet)()
 
     @property
     def split_method_friendly_name(self) -> str:
@@ -75,7 +93,8 @@ class ExpenseSplit(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     expense = models.ForeignKey(Expense, on_delete=models.CASCADE)
-    user = models.TextField()
+    # FIXME: cascade?
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     shares = models.IntegerField()
 
     @property

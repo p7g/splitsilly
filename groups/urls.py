@@ -1,10 +1,11 @@
 from django.urls import path
 
-from .views import CreateExpense, UpdateExpense, group_home, expense_detail, GroupSettings
+from .views import CreateExpense, UpdateExpense, group_home, expense_detail, GroupSettings, groups_index
 
 app_name = "groups"
 
 urlpatterns = [
+    path("", groups_index, name="index"),
     path("<int:group_id>/", group_home, name="group"),
     path("<int:group_id>/settings/", GroupSettings.as_view(), name="group_settings"),
     path("<int:group_id>/settle_up/", CreateExpense.as_view(is_settle_up=True), name="settle_up"),

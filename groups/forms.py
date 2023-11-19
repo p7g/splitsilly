@@ -1,7 +1,9 @@
 from django import forms
-from django.core import validators
+from django.core.exceptions import ValidationError
+from django.db.models import Exists, OuterRef
 from django.utils import timezone
 
+from identity.models import User
 from .api import (
     create_expense,
     shares_are_money,
@@ -37,12 +39,15 @@ class ExpenseForm(forms.ModelForm):
         }
 
     name = forms.CharField()
-    payer = forms.ChoiceField(choices=[])
+    payer = forms.ModelChoiceField(queryset=User.objects.none())
     amount = MoneyField()
 
     def __init__(self, *, group: ExpenseGroup, **kwargs):
         self._group = group
-        users = list(group.expensegroupuser_set.order_by("created_at"))
+        user_queryset = User.objects.filter(
+            Exists(group.expensegroupuser_set.filter(user_id=OuterRef("pk")))
+        ).order_by("date_joined")
+        users = list(user_queryset)
 
         initial = kwargs.pop("initial", {})
         initial.setdefault("group", group.id)
@@ -52,23 +57,22 @@ class ExpenseForm(forms.ModelForm):
         if instance:
             initial["amount"] = money_to_float(instance.amount)
 
-            for split in instance.expensesplit_set.all():
+            for split in instance.expensesplit_set.select_related("user"):
                 shares = split.shares
                 if shares_are_money(instance.type):
                     shares = money_to_float(shares)
-                initial[f"split_{split.user}"] = shares
+                initial[f"split_{split.user.username}"] = shares
 
         super().__init__(**kwargs, initial=initial)
         self._users = users
-        self.fields["payer"] = forms.ChoiceField(
-            choices=[(u.name, u.name) for u in users]
-        )
+        self.fields["payer"].queryset = user_queryset
+        self.fields["to_field_name"] = "username"
         self.fields["group"].initial = group.id
 
         self.split_fields = []
         for user in users:
-            field = forms.FloatField(label=user.name, initial=0)
-            field_key = f"split_{user.name}"
+            field = forms.FloatField(label=user.username, initial=0)
+            field_key = f"split_{user.username}"
             self.fields[field_key] = field
             self.split_fields.append(self[field_key])
 
@@ -77,12 +81,12 @@ class ExpenseForm(forms.ModelForm):
 
         split_by_user = {}
         for user in self._users:
-            shares = self.cleaned_data[f"split_{user.name}"]
+            shares = self.cleaned_data[f"split_{user.username}"]
             if shares_are_money(self.cleaned_data["type"]):
                 shares = float_to_money(shares)
             else:
                 shares = int(shares)
-            split_by_user[user.name] = shares
+            split_by_user[user] = shares
 
         validate_expense_split(
             self.cleaned_data["type"], self.cleaned_data["amount"], split_by_user
@@ -117,13 +121,16 @@ class SettleUpForm(forms.ModelForm):
             "date": forms.DateInput(attrs={"type": "date"}),
         }
 
-    payer = forms.ChoiceField(choices=[])
-    payee = forms.ChoiceField(choices=[])
+    payer = forms.ModelChoiceField(queryset=User.objects.none())
+    payee = forms.ModelChoiceField(queryset=User.objects.none())
     amount = MoneyField()
 
     def __init__(self, *, group: ExpenseGroup, **kwargs):
         self._group = group
-        users = list(group.expensegroupuser_set.order_by("created_at"))
+        user_queryset = User.objects.filter(
+            Exists(group.expensegroupuser_set.filter(user_id=OuterRef("pk")))
+        ).order_by("date_joined")
+        users = list(user_queryset)
 
         initial = kwargs.pop("initial", {})
         initial.setdefault("group", group.id)
@@ -132,16 +139,16 @@ class SettleUpForm(forms.ModelForm):
         instance = kwargs.get("instance")
         if instance and instance.pk:
             initial["amount"] = money_to_float(instance.amount)
-            initial["payee"] = instance.expensesplit_set.get().user
+            initial["payee"] = (
+                instance.expensesplit_set.select_related("user").get().user
+            )
 
         super().__init__(**kwargs, initial=initial)
         self._users = users
-        self.fields["payer"] = forms.ChoiceField(
-            choices=[(u.name, u.name) for u in users]
-        )
-        self.fields["payee"] = forms.ChoiceField(
-            choices=[(u.name, u.name) for u in users]
-        )
+        self.fields["payer"].queryset = user_queryset
+        self.fields["payer"].to_field_name = "username"
+        self.fields["payee"].queryset = user_queryset
+        self.fields["payee"].to_field_name = "username"
         self.fields["group"].initial = group.id
 
     def save(self, *args, **kwargs):
@@ -176,6 +183,8 @@ class CommaSeparatedCharField(forms.Field):
         return list(set(filter(None, value)))
 
     def prepare_value(self, value):
+        if isinstance(value, str):
+            return value
         return ", ".join(value)
 
 
@@ -184,6 +193,8 @@ class ExpenseGroupSettingsForm(forms.ModelForm):
         model = ExpenseGroup
         fields = ("simplify_debts",)
 
+    users = CommaSeparatedCharField()
+
     def __init__(self, instance=None, initial=None, **kwargs):
         initial = initial or {}
 
@@ -191,8 +202,10 @@ class ExpenseGroupSettingsForm(forms.ModelForm):
             initial.setdefault(
                 "users",
                 [
-                    user.name
-                    for user in instance.expensegroupuser_set.order_by("created_at")
+                    gu.user.username
+                    for gu in instance.expensegroupuser_set.select_related(
+                        "user"
+                    ).order_by("created_at")
                 ],
             )
 
@@ -200,9 +213,15 @@ class ExpenseGroupSettingsForm(forms.ModelForm):
 
         self.fields["simplify_debts"].label_suffix = ""
 
+    def clean_users(self):
+        value = self.cleaned_data["users"]
+        matching_users = User.objects.filter(is_active=True, username__in=value)
+        missing = set(value) - {u.username for u in matching_users}
+        if missing:
+            raise ValidationError(f"Unknown users: {', '.join(missing)}")
+        return matching_users
+
     def save(self, *args, **kwargs):
         instance = super().save(*args, **kwargs)
         sync_expense_group_users(instance, self.cleaned_data["users"])
         return instance
-
-    users = CommaSeparatedCharField()

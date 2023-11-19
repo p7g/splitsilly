@@ -4,6 +4,7 @@ from datetime import date
 
 from django.core.exceptions import ValidationError
 
+from identity.models import User
 from .models import ExpenseGroup, ExpenseGroupUser, Expense, ExpenseSplit
 
 
@@ -11,24 +12,24 @@ def create_expense_group(name: str) -> ExpenseGroup:
     return ExpenseGroup.objects.create(name=name)
 
 
-def add_expense_group_user(group: ExpenseGroup, user: str) -> ExpenseGroupUser:
-    return group.expensegroupuser_set.create(name=user)
+def add_expense_group_user(group: ExpenseGroup, user: User) -> ExpenseGroupUser:
+    return group.expensegroupuser_set.create(user=user)
 
 
-def sync_expense_group_users(group: ExpenseGroup, users: Sequence[str]) -> None:
+def sync_expense_group_users(group: ExpenseGroup, users: Sequence[User]) -> None:
     new_users = set(users)
-    existing_users = set(group.expensegroupuser_set.values_list("name", flat=True))
+    existing_users = {gu.user for gu in group.expensegroupuser_set.select_related("user")}
 
     to_remove = existing_users - new_users
-    group.expensegroupuser_set.filter(name__in=to_remove).delete()
+    group.expensegroupuser_set.filter(user__in=to_remove).delete()
 
     to_add = new_users - existing_users
     ExpenseGroupUser.objects.bulk_create(
-        ExpenseGroupUser(group=group, name=name) for name in to_add
+        ExpenseGroupUser(group=group, user=user) for user in to_add
     )
 
 
-def validate_expense_split(type_: Expense.Type, amount: int, split: dict[str, int]):
+def validate_expense_split(type_: Expense.Type, amount: int, split: dict[User, int]):
     if type_ == Expense.Type.EXACT:
         if amount != sum(split.values()):
             raise ValidationError("Split does not add to amount")
@@ -46,10 +47,10 @@ def create_expense(
     group: ExpenseGroup,
     name: str,
     type_: Expense.Type,
-    payer: str,
+    payer: User,
     date: date,
     amount: int,
-    split: dict[str, int],
+    split: dict[User, int],
     _is_settle_up: bool = False,
 ) -> Expense:
     validate_expense_split(type_, amount, split)
@@ -69,10 +70,10 @@ def update_expense(
     expense: Expense,
     name: str,
     type_: Expense.Type,
-    payer: str,
+    payer: User,
     date: date,
     amount: int,
-    split: dict[str, int],
+    split: dict[User, int],
 ) -> None:
     expense.name = name
     expense.type = type_
@@ -81,7 +82,7 @@ def update_expense(
     expense.amount = amount
     expense.save()
 
-    old_split = {split.user: split.shares for split in expense.expensesplit_set.all()}
+    old_split = {split.user: split.shares for split in expense.expensesplit_set.select_related("user")}
     expense.expensesplit_set.filter(user__in=old_split.keys() - split.keys()).delete()
     existing_splits = expense.expensesplit_set.all()
     for existing_split in existing_splits:
@@ -93,10 +94,10 @@ def update_expense(
     )
 
 
-def calculate_debts(group: ExpenseGroup) -> dict[tuple[str, str], int]:
+def calculate_debts(group: ExpenseGroup) -> dict[tuple[User, User], int]:
     debts = {}
 
-    for expense in group.expense_set.prefetch_related("expensesplit_set"):
+    for expense in group.expense_set.prefetch_related("payer", "expensesplit_set__user"):
         expense_debts = calculate_expense_debts(expense)
         for owee, debt in expense_debts.items():
             if owee == expense.payer:
@@ -120,13 +121,13 @@ def money_to_float(value: int) -> float:
     return float(value) / 100
 
 
-def calculate_expense_debts(expense: Expense) -> dict[str, int]:
+def calculate_expense_debts(expense: Expense) -> dict[User, int]:
     debts = _calculate_expense_debts(expense)
     return {user: amount for user, amount in debts.items() if amount}
 
 
-def _calculate_expense_debts(expense: Expense) -> dict[str, int]:
-    splits = expense.expensesplit_set.all()
+def _calculate_expense_debts(expense: Expense) -> dict[User, int]:
+    splits = expense.expensesplit_set.select_related("user").all()
 
     if expense.type == Expense.Type.EXACT:
         return {split.user: split.shares for split in splits}
@@ -150,9 +151,8 @@ def _calculate_expense_debts(expense: Expense) -> dict[str, int]:
         raise NotImplementedError(expense.type)
 
 
-def simplify_debts(debts: dict[tuple[str, str], int]) -> dict[tuple[str, str], int]:
-    owers, lenders = map(set, zip(*debts))
-    all_users = owers | lenders
+def simplify_debts(debts: dict[tuple[User, User], int]) -> dict[tuple[User, User], int]:
+    all_users = {user for edge in debts.keys() for user in edge}
 
     lenders_by_user = defaultdict(set)
     for ower, lender in debts:
@@ -223,7 +223,7 @@ def simplify_debts(debts: dict[tuple[str, str], int]) -> dict[tuple[str, str], i
     return new_debts
 
 
-def settle_up(group: ExpenseGroup, payer: str, date: date, payee: str, amount: int) -> Expense:
+def settle_up(group: ExpenseGroup, payer: User, date: date, payee: User, amount: int) -> Expense:
     return create_expense(
         group,
         "Settling up",
@@ -236,7 +236,7 @@ def settle_up(group: ExpenseGroup, payer: str, date: date, payee: str, amount: i
     )
 
 
-def update_settle_up(expense: Expense, payer: str, date: date, payee: str, amount: int) -> None:
+def update_settle_up(expense: Expense, payer: User, date: date, payee: User, amount: int) -> None:
     update_expense(
         expense,
         "Settling up",
