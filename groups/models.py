@@ -51,6 +51,7 @@ class Expense(models.Model):
     amount = models.IntegerField()
     payer = models.TextField()
     type = models.IntegerField(choices=EXPENSE_TYPE_CHOICES)
+    is_settle_up = models.BooleanField(default=False)
 
     @property
     def split_method_friendly_name(self) -> str:

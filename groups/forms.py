@@ -1,7 +1,18 @@
 from django import forms
 from django.core import validators
+from django.utils import timezone
 
-from .api import create_expense, shares_are_money, money_to_float, float_to_money, update_expense, validate_expense_split, sync_expense_group_users
+from .api import (
+    create_expense,
+    shares_are_money,
+    money_to_float,
+    float_to_money,
+    update_expense,
+    update_settle_up,
+    settle_up,
+    validate_expense_split,
+    sync_expense_group_users,
+)
 from .models import Expense, ExpenseGroup
 
 
@@ -35,6 +46,7 @@ class ExpenseForm(forms.ModelForm):
 
         initial = kwargs.pop("initial", {})
         initial.setdefault("group", group.id)
+        initial.setdefault("date", timezone.now().date())
 
         instance = kwargs.get("instance")
         if instance:
@@ -48,7 +60,9 @@ class ExpenseForm(forms.ModelForm):
 
         super().__init__(**kwargs, initial=initial)
         self._users = users
-        self.fields["payer"] = forms.ChoiceField(choices=[(u.name, u.name) for u in users])
+        self.fields["payer"] = forms.ChoiceField(
+            choices=[(u.name, u.name) for u in users]
+        )
         self.fields["group"].initial = group.id
 
         self.split_fields = []
@@ -70,7 +84,9 @@ class ExpenseForm(forms.ModelForm):
                 shares = int(shares)
             split_by_user[user.name] = shares
 
-        validate_expense_split(self.cleaned_data["type"], self.cleaned_data["amount"], split_by_user)
+        validate_expense_split(
+            self.cleaned_data["type"], self.cleaned_data["amount"], split_by_user
+        )
         self.cleaned_data["split"] = split_by_user
 
     def save(self, commit=True):
@@ -83,14 +99,69 @@ class ExpenseForm(forms.ModelForm):
             "payer": self.cleaned_data["payer"],
             "date": self.cleaned_data["date"],
             "amount": self.cleaned_data["amount"],
-            "split": self.cleaned_data["split"]
+            "split": self.cleaned_data["split"],
         }
 
-        if self.instance:
+        if self.instance.pk:
             update_expense(self.instance, **expense_data)
             return self.instance
         else:
             return create_expense(self.cleaned_data["group"], **expense_data)
+
+
+class SettleUpForm(forms.ModelForm):
+    class Meta:
+        model = Expense
+        fields = ("group", "date", "payer", "amount")
+        widgets = {
+            "date": forms.DateInput(attrs={"type": "date"}),
+        }
+
+    payer = forms.ChoiceField(choices=[])
+    payee = forms.ChoiceField(choices=[])
+    amount = MoneyField()
+
+    def __init__(self, *, group: ExpenseGroup, **kwargs):
+        self._group = group
+        users = list(group.expensegroupuser_set.order_by("created_at"))
+
+        initial = kwargs.pop("initial", {})
+        initial.setdefault("group", group.id)
+        initial.setdefault("date", timezone.now().date())
+
+        instance = kwargs.get("instance")
+        if instance and instance.pk:
+            initial["amount"] = money_to_float(instance.amount)
+            initial["payee"] = instance.expensesplit_set.get().user
+
+        super().__init__(**kwargs, initial=initial)
+        self._users = users
+        self.fields["payer"] = forms.ChoiceField(
+            choices=[(u.name, u.name) for u in users]
+        )
+        self.fields["payee"] = forms.ChoiceField(
+            choices=[(u.name, u.name) for u in users]
+        )
+        self.fields["group"].initial = group.id
+
+    def save(self, *args, **kwargs):
+        if self.instance.pk:
+            update_settle_up(
+                self.instance,
+                self.cleaned_data["payer"],
+                self.cleaned_data["payee"],
+                self.cleaned_data["date"],
+                self.cleaned_data["amount"],
+            )
+            return self.instance
+        else:
+            return settle_up(
+                self.cleaned_data["group"],
+                self.cleaned_data["payer"],
+                self.cleaned_data["date"],
+                self.cleaned_data["payee"],
+                self.cleaned_data["amount"],
+            )
 
 
 class CommaSeparatedCharField(forms.Field):
@@ -101,7 +172,7 @@ class CommaSeparatedCharField(forms.Field):
         if value in self.empty_values:
             return []
 
-        value = (item.strip() for item in value.split(','))
+        value = (item.strip() for item in value.split(","))
         return list(set(filter(None, value)))
 
     def prepare_value(self, value):
@@ -117,7 +188,13 @@ class ExpenseGroupSettingsForm(forms.ModelForm):
         initial = initial or {}
 
         if instance:
-            initial.setdefault("users", [user.name for user in instance.expensegroupuser_set.order_by("created_at")])
+            initial.setdefault(
+                "users",
+                [
+                    user.name
+                    for user in instance.expensegroupuser_set.order_by("created_at")
+                ],
+            )
 
         super().__init__(instance=instance, initial=initial, **kwargs)
 

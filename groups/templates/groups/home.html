@@ -39,6 +39,7 @@
 
     <p>
         <a href="{% url 'groups:expense_create' group.id %}">Add expense</a>
+        <a href="{% url 'groups:settle_up' group.id %}">Settle up</a>
     </p>
 
     {% for year, month, month_expenses in expenses %}

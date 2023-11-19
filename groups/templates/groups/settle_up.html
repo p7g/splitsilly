@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Settle up | Splitsilly{% endblock %}
+
+{% block head %}
+<style>
+.form-row:not(:first-child) {
+    margin: 1rem 0 0;
+}
+
+legend + .form-row.form-row {
+    margin-top: 0;
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<h1>Settle up</h1>
+{% if expense %}
+<a href="{{ expense.get_absolute_url }}">Cancel</a>
+{% else %}
+<a href="{{ group.get_absolute_url }}">Cancel</a>
+{% endif %}
+
+<form method="POST" action="">
+    {% csrf_token %}
+
+    <div class="form-row">
+        {{ form.non_field_errors }}
+    </div>
+
+    {{ form.group.as_hidden }}
+
+    <div class="form-row">
+        {{ form.payer.errors }}
+        {{ form.payer.label_tag }}
+        {{ form.payer }}
+    </div>
+
+    <div class="form-row">
+        {{ form.payee.errors }}
+        {{ form.payee.label_tag }}
+        {{ form.payee }}
+    </div>
+
+    <div class="form-row">
+        {{ form.date.errors }}
+        {{ form.date.label_tag }}
+        {{ form.date }}
+    </div>
+
+    <div class="form-row">
+        {{ form.amount.errors }}
+        {{ form.amount.label_tag }}
+        {{ form.amount }}
+    </div>
+
+    <div class="form-row">
+        <input type="submit" value="Save" />
+    </div>
+</form>
+{% endblock %}

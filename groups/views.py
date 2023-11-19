@@ -3,9 +3,10 @@ import calendar
 from django.http import Http404
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import CreateView, TemplateView, UpdateView
+from django.urls import reverse
 
 from .api import calculate_debts, calculate_expense_debts, simplify_debts, shares_are_money, money_to_float
-from .forms import ExpenseForm, ExpenseGroupSettingsForm
+from .forms import ExpenseForm, ExpenseGroupSettingsForm, SettleUpForm
 from .models import Expense, ExpenseGroup
 
 
@@ -75,17 +76,35 @@ class CreateExpense2(TemplateView):
 
 class ExpenseFormViewMixin:
     model = Expense
-    form_class = ExpenseForm
+
+    def __init__(self, *args, is_settle_up: bool = False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._is_settle_up = is_settle_up
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs["group"] = self._get_group()
         return kwargs
 
+    def is_settle_up(self):
+        return self._is_settle_up or (self.object and self.object.is_settle_up)
+
+    def get_form_class(self):
+        if self.is_settle_up():
+            return SettleUpForm
+        else:
+            return ExpenseForm
+
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
         data["group"] = data["form"]._group
         return data
+
+    def get_template_names(self):
+        if self.is_settle_up():
+            return ["groups/settle_up.html"]
+        else:
+            return[ "groups/expense_form.html"]
 
 
 class CreateExpense(ExpenseFormViewMixin, CreateView):

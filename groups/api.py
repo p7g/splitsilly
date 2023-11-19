@@ -23,7 +23,9 @@ def sync_expense_group_users(group: ExpenseGroup, users: Sequence[str]) -> None:
     group.expensegroupuser_set.filter(name__in=to_remove).delete()
 
     to_add = new_users - existing_users
-    ExpenseGroupUser.objects.bulk_create(ExpenseGroupUser(group=group, name=name) for name in to_add)
+    ExpenseGroupUser.objects.bulk_create(
+        ExpenseGroupUser(group=group, name=name) for name in to_add
+    )
 
 
 def validate_expense_split(type_: Expense.Type, amount: int, split: dict[str, int]):
@@ -41,20 +43,36 @@ def validate_expense_split(type_: Expense.Type, amount: int, split: dict[str, in
 
 
 def create_expense(
-    group: ExpenseGroup, name: str, type_: Expense.Type, payer: str, date: date, amount: int, split: dict[str, int]
+    group: ExpenseGroup,
+    name: str,
+    type_: Expense.Type,
+    payer: str,
+    date: date,
+    amount: int,
+    split: dict[str, int],
+    _is_settle_up: bool = False,
 ) -> Expense:
     validate_expense_split(type_, amount, split)
-    expense = Expense.objects.create(group=group, name=name, type=type_, payer=payer, date=date, amount=amount)
+    expense = Expense.objects.create(
+        group=group, name=name, type=type_, payer=payer, date=date, amount=amount, is_settle_up=_is_settle_up
+    )
 
     ExpenseSplit.objects.bulk_create(
-        ExpenseSplit(expense=expense, user=user, shares=shares) for user, shares in split.items()
+        ExpenseSplit(expense=expense, user=user, shares=shares)
+        for user, shares in split.items()
     )
 
     return expense
 
 
 def update_expense(
-    expense: Expense, name: str, type_: Expense.Type, payer: str, date: date, amount: int, split: dict[str, int]
+    expense: Expense,
+    name: str,
+    type_: Expense.Type,
+    payer: str,
+    date: date,
+    amount: int,
+    split: dict[str, int],
 ) -> None:
     expense.name = name
     expense.type = type_
@@ -114,7 +132,8 @@ def _calculate_expense_debts(expense: Expense) -> dict[str, int]:
         return {split.user: split.shares for split in splits}
     elif expense.type == Expense.Type.PERCENTAGE:
         return {
-            split.user: int(expense.amount * (float(split.shares) / 100)) for split in splits
+            split.user: int(expense.amount * (float(split.shares) / 100))
+            for split in splits
         }
     elif expense.type == Expense.Type.SHARES:
         total_shares = sum(split.shares for split in splits)
@@ -123,9 +142,9 @@ def _calculate_expense_debts(expense: Expense) -> dict[str, int]:
             for split in splits
         }
     elif expense.type == Expense.Type.ADJUSTMENT:
-        base_debt = int((expense.amount - sum(split.shares for split in splits)) / len(
-            splits
-        ))
+        base_debt = int(
+            (expense.amount - sum(split.shares for split in splits)) / len(splits)
+        )
         return {split.user: base_debt + split.shares for split in splits}
     else:
         raise NotImplementedError(expense.type)
@@ -156,16 +175,13 @@ def simplify_debts(debts: dict[tuple[str, str], int]) -> dict[tuple[str, str], i
 
                 diff = a_owes_b - b_owes_a
                 if diff == 0:
-                    print("mutual lending;", a, "and", b, "owed each other the same amount")
                     continue
                 elif diff > 0:
                     new_debts[a, b] = diff
                     lenders_by_user[a].add(b)
-                    print("mutual lending;", a, "owed", b, a_owes_b, "and", b, "owed", a, b_owes_a, "simplified to", a, "->", b, diff)
                 else:
                     new_debts[b, a] = -diff
                     lenders_by_user[b].add(a)
-                    print("mutual lending;", a, "owed", b, a_owes_b, "and", b, "owed", a, b_owes_a, "simplified to", b, "->", a, -diff)
 
     for a in all_users:
         for b in all_users:
@@ -178,8 +194,7 @@ def simplify_debts(debts: dict[tuple[str, str], int]) -> dict[tuple[str, str], i
             # A -> C (and maybe A -> B or B -> C)
             lenders_to_b = lenders_by_user[b]
             if new_debts.get((a, b)) and len(lenders_to_b) == 1:
-                c, = lenders_to_b
-                print(a, "owes", b, "and", b, "only owes to", c)
+                (c,) = lenders_to_b
                 a_owes_b = new_debts.pop((a, b))
                 b_owes_c = new_debts.pop((b, c))
                 lenders_by_user[a].discard(b)
@@ -206,3 +221,28 @@ def simplify_debts(debts: dict[tuple[str, str], int]) -> dict[tuple[str, str], i
                     lenders_by_user[b].add(c)
 
     return new_debts
+
+
+def settle_up(group: ExpenseGroup, payer: str, date: date, payee: str, amount: int) -> Expense:
+    return create_expense(
+        group,
+        "Settling up",
+        Expense.Type.SHARES,
+        payer,
+        date,
+        amount,
+        {payee: 1},
+        _is_settle_up=True,
+    )
+
+
+def update_settle_up(expense: Expense, payer: str, date: date, payee: str, amount: int) -> None:
+    update_expense(
+        expense,
+        "Settling up",
+        Expense.Type.SHARES,
+        payer,
+        date,
+        amount,
+        {payee: 1},
+    )
