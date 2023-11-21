@@ -56,8 +56,10 @@ def group_home(request, group_id: int):
 @login_required
 def expense_detail(request, expense_id: int):
     try:
-        expense = Expense.objects.for_user(request.user).prefetch_related("expensesplit_set").get(
-            pk=expense_id
+        expense = (
+            Expense.objects.for_user(request.user)
+            .prefetch_related("expensesplit_set")
+            .get(pk=expense_id)
         )
     except ExpenseGroup.DoesNotExist:
         raise Http404()
@@ -107,7 +109,9 @@ class ExpenseFormViewMixin(LoginRequiredMixin):
 
 class CreateExpense(ExpenseFormViewMixin, CreateView):
     def _get_group(self):
-        return get_object_or_404(ExpenseGroup.objects.for_user(self.request.user), pk=self.kwargs["group_id"])
+        return get_object_or_404(
+            ExpenseGroup.objects.for_user(self.request.user), pk=self.kwargs["group_id"]
+        )
 
     def get_initial(self):
         initial = super().get_initial()
@@ -120,7 +124,9 @@ class UpdateExpense(ExpenseFormViewMixin, UpdateView):
     context_object_name = "expense"
 
     def _get_group(self):
-        return get_object_or_404(Expense.objects.for_user(self.request.user), pk=self.kwargs["expense_id"]).group
+        return get_object_or_404(
+            Expense.objects.for_user(self.request.user), pk=self.kwargs["expense_id"]
+        ).group
 
 
 class DeleteExpense(DeleteView):

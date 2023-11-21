@@ -11,7 +11,13 @@ from .templatetags.money import to_dollars
 
 class ExpenseGroupQuerySet(models.QuerySet):
     def for_user(self, user: User):
-        return self.filter(Exists(ExpenseGroupUser.objects.filter(user=user, group=OuterRef("pk")).values("id")))
+        return self.filter(
+            Exists(
+                ExpenseGroupUser.objects.filter(user=user, group=OuterRef("pk")).values(
+                    "id"
+                )
+            )
+        )
 
 
 class ExpenseGroup(models.Model):
@@ -40,7 +46,13 @@ class ExpenseGroupUser(models.Model):
 
 class ExpenseQuerySet(models.QuerySet):
     def for_user(self, user: User):
-        return self.filter(Exists(ExpenseGroup.objects.for_user(user).filter(id=OuterRef("group_id")).values("id")))
+        return self.filter(
+            Exists(
+                ExpenseGroup.objects.for_user(user)
+                .filter(id=OuterRef("group_id"))
+                .values("id")
+            )
+        )
 
 
 class Expense(models.Model):

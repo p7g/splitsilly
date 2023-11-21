@@ -18,7 +18,9 @@ def add_expense_group_user(group: ExpenseGroup, user: User) -> ExpenseGroupUser:
 
 def sync_expense_group_users(group: ExpenseGroup, users: Sequence[User]) -> None:
     new_users = set(users)
-    existing_users = {gu.user for gu in group.expensegroupuser_set.select_related("user")}
+    existing_users = {
+        gu.user for gu in group.expensegroupuser_set.select_related("user")
+    }
 
     to_remove = existing_users - new_users
     group.expensegroupuser_set.filter(user__in=to_remove).delete()
@@ -55,7 +57,13 @@ def create_expense(
 ) -> Expense:
     validate_expense_split(type_, amount, split)
     expense = Expense.objects.create(
-        group=group, name=name, type=type_, payer=payer, date=date, amount=amount, is_settle_up=_is_settle_up
+        group=group,
+        name=name,
+        type=type_,
+        payer=payer,
+        date=date,
+        amount=amount,
+        is_settle_up=_is_settle_up,
     )
 
     ExpenseSplit.objects.bulk_create(
@@ -82,7 +90,10 @@ def update_expense(
     expense.amount = amount
     expense.save()
 
-    old_split = {split.user: split.shares for split in expense.expensesplit_set.select_related("user")}
+    old_split = {
+        split.user: split.shares
+        for split in expense.expensesplit_set.select_related("user")
+    }
     expense.expensesplit_set.filter(user__in=old_split.keys() - split.keys()).delete()
     existing_splits = expense.expensesplit_set.all()
     for existing_split in existing_splits:
@@ -97,7 +108,9 @@ def update_expense(
 def calculate_debts(group: ExpenseGroup) -> dict[tuple[User, User], int]:
     debts = {}
 
-    for expense in group.expense_set.prefetch_related("payer", "expensesplit_set__user"):
+    for expense in group.expense_set.prefetch_related(
+        "payer", "expensesplit_set__user"
+    ):
         expense_debts = calculate_expense_debts(expense)
         for owee, debt in expense_debts.items():
             if owee == expense.payer:
@@ -223,7 +236,9 @@ def simplify_debts(debts: dict[tuple[User, User], int]) -> dict[tuple[User, User
     return new_debts
 
 
-def settle_up(group: ExpenseGroup, payer: User, date: date, payee: User, amount: int) -> Expense:
+def settle_up(
+    group: ExpenseGroup, payer: User, date: date, payee: User, amount: int
+) -> Expense:
     return create_expense(
         group,
         "Settling up",
@@ -236,7 +251,9 @@ def settle_up(group: ExpenseGroup, payer: User, date: date, payee: User, amount:
     )
 
 
-def update_settle_up(expense: Expense, payer: User, date: date, payee: User, amount: int) -> None:
+def update_settle_up(
+    expense: Expense, payer: User, date: date, payee: User, amount: int
+) -> None:
     update_expense(
         expense,
         "Settling up",
