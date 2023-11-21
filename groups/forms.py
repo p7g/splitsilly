@@ -66,7 +66,7 @@ class ExpenseForm(forms.ModelForm):
         super().__init__(**kwargs, initial=initial)
         self._users = users
         self.fields["payer"].queryset = user_queryset
-        self.fields["to_field_name"] = "username"
+        self.fields["payer"].to_field_name = "username"
         self.fields["group"].initial = group.id
 
         self.split_fields = []
