@@ -213,11 +213,17 @@ class ExpenseGroupSettingsForm(forms.ModelForm):
         self.fields["simplify_debts"].label_suffix = ""
 
     def clean_users(self):
-        value = self.cleaned_data["users"]
-        matching_users = User.objects.filter(is_active=True, username__in=value)
-        missing = set(value) - {u.username for u in matching_users}
+        value = {
+            username.casefold(): username for username in self.cleaned_data["users"]
+        }
+        matching_users = User.objects.filter(
+            is_active=True, username__in=value.values()
+        )
+        missing = value.keys() - {u.username.casefold() for u in matching_users}
         if missing:
-            raise ValidationError(f"Unknown users: {', '.join(missing)}")
+            raise ValidationError(
+                f"Unknown users: {', '.join(value[u] for u in missing)}"
+            )
         return matching_users
 
     def save(self, *args, **kwargs):
