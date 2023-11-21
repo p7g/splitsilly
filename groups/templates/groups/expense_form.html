@@ -22,7 +22,7 @@ legend + .form-row.form-row {
 <a href="{{ group.get_absolute_url }}">Cancel</a>
 {% endif %}
 
-<form method="POST" action="">
+<form id="expenseForm" method="POST" action="">
     {% csrf_token %}
 
     <div class="form-row">
@@ -61,7 +61,7 @@ legend + .form-row.form-row {
         {{ form.type }}
     </div>
 
-    <fieldset class="form-row">
+    <fieldset class="form-row" id="splitFieldset">
         <legend>Split</legend>
 
         {% for field in form.split_fields %}
@@ -77,4 +77,42 @@ legend + .form-row.form-row {
         <input type="submit" value="Save" />
     </div>
 </form>
+
+<script>
+const form = expenseForm;
+const typeField = form.type;
+const amountField = form.elements.amount;
+const splitFields = [...form.elements].filter(el => el.name.startsWith("split_"));
+const EXACT = "1",
+    PERCENTAGE = "2";
+
+function updateRemaining() {
+    let el = document.getElementById("remaining-amount");
+    if (typeField.value !== EXACT && typeField.value !== PERCENTAGE) {
+        if (el) el.remove();
+        return;
+    }
+    if (!el) {
+        el = document.createElement("p");
+        el.id = "remaining-amount";
+        splitFieldset.prepend(el);
+    }
+
+    const isDollars = typeField.value === EXACT;
+
+    if (isDollars) {
+        const remaining = parseFloat(amountField.value) - splitFields.reduce((acc, el) => acc + parseFloat(el.value || 0), 0);
+        el.innerText = `$${remaining.toFixed(2)} remaining`;
+    } else {
+        const remaining = 100 - splitFields.reduce((acc, el) => acc + Math.floor(parseFloat(el.value || 0)), 0);
+        el.innerText = `${remaining}% remaining`;
+    }
+}
+
+typeField.onchange = updateRemaining;
+amountField.oninput = updateRemaining;
+splitFields.forEach(field => (field.oninput = updateRemaining));
+
+updateRemaining();
+</script>
 {% endblock %}

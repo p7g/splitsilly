@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from identity.models import User
 
 from .models import Expense, ExpenseGroup, ExpenseGroupUser, ExpenseSplit
+from .templatetags.money import to_dollars
 
 
 def create_expense_group(name: str) -> ExpenseGroup:
@@ -34,11 +35,15 @@ def sync_expense_group_users(group: ExpenseGroup, users: Sequence[User]) -> None
 
 def validate_expense_split(type_: Expense.Type, amount: int, split: dict[User, int]):
     if type_ == Expense.Type.EXACT:
-        if amount != sum(split.values()):
-            raise ValidationError("Split does not add to amount")
+        total = sum(split.values())
+        if amount != total:
+            raise ValidationError(
+                f"Split must add to {to_dollars(amount)}, got {to_dollars(total)}"
+            )
     elif type_ == Expense.Type.PERCENTAGE:
-        if sum(split.values()) != 100:
-            raise ValidationError("Split percentages do not add to 100")
+        total = sum(split.values())
+        if total != 100:
+            raise ValidationError(f"Split percentages must add to 100, got {total}")
     elif type_ == Expense.Type.SHARES:
         if all(shares == 0 for shares in split.values()):
             raise ValidationError("The total number of shares must be at least 1")
