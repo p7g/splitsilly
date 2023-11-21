@@ -3,7 +3,7 @@ import calendar
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import Http404
-from django.shortcuts import render, get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import CreateView, DeleteView, UpdateView
 
 from .api import calculate_debts, calculate_expense_debts, simplify_debts

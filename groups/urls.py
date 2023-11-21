@@ -3,10 +3,10 @@ from django.urls import path
 from .views import (
     CreateExpense,
     DeleteExpense,
-    UpdateExpense,
-    group_home,
-    expense_detail,
     GroupSettings,
+    UpdateExpense,
+    expense_detail,
+    group_home,
     groups_index,
 )
 

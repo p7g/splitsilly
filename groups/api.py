@@ -5,7 +5,8 @@ from datetime import date
 from django.core.exceptions import ValidationError
 
 from identity.models import User
-from .models import ExpenseGroup, ExpenseGroupUser, Expense, ExpenseSplit
+
+from .models import Expense, ExpenseGroup, ExpenseGroupUser, ExpenseSplit
 
 
 def create_expense_group(name: str) -> ExpenseGroup:
