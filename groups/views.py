@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import Http404
 from django.shortcuts import render, get_object_or_404, redirect
-from django.views.generic import CreateView, UpdateView
+from django.views.generic import CreateView, DeleteView, UpdateView
 
 from .api import calculate_debts, calculate_expense_debts, simplify_debts
 from .forms import ExpenseForm, ExpenseGroupSettingsForm, SettleUpForm
@@ -121,6 +121,15 @@ class UpdateExpense(ExpenseFormViewMixin, UpdateView):
 
     def _get_group(self):
         return get_object_or_404(Expense.objects.for_user(self.request.user), pk=self.kwargs["expense_id"]).group
+
+
+class DeleteExpense(DeleteView):
+    pk_url_kwarg = "expense_id"
+    context_object_name = "expense"
+    model = Expense
+
+    def get_success_url(self):
+        return self.object.group.get_absolute_url()
 
 
 class GroupSettings(LoginRequiredMixin, UpdateView):

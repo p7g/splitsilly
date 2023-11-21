@@ -7,6 +7,7 @@
 <h1>{{ expense.name }} on {{ expense.date.isoformat }}</h1>
 <a href="{{ expense.group.get_absolute_url }}">Back</a>
 <a href="{% url 'groups:expense_change' expense.id %}">Edit</a>
+<a href="{% url 'groups:expense_delete' expense.id %}">Delete</a>
 
 <h2>Debts</h2>
 
