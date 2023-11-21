@@ -3,7 +3,7 @@ import calendar
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import Http404
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import CreateView, UpdateView
 
 from .api import calculate_debts, calculate_expense_debts, simplify_debts
@@ -13,7 +13,8 @@ from .models import Expense, ExpenseGroup
 
 @login_required
 def groups_index(request):
-    pass
+    group = get_object_or_404(ExpenseGroup.objects.for_user(request.user))
+    return redirect(group)
 
 
 @login_required
