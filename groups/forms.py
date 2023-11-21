@@ -64,9 +64,9 @@ class ExpenseForm(forms.ModelForm):
                 initial[f"split_{split.user.username}"] = shares
 
         super().__init__(**kwargs, initial=initial)
+
         self._users = users
         self.fields["payer"].queryset = user_queryset
-        self.fields["payer"].to_field_name = "username"
         self.fields["group"].initial = group.id
 
         self.split_fields = []
@@ -146,9 +146,7 @@ class SettleUpForm(forms.ModelForm):
         super().__init__(**kwargs, initial=initial)
         self._users = users
         self.fields["payer"].queryset = user_queryset
-        self.fields["payer"].to_field_name = "username"
         self.fields["payee"].queryset = user_queryset
-        self.fields["payee"].to_field_name = "username"
         self.fields["group"].initial = group.id
 
     def save(self, *args, **kwargs):
