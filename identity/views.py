@@ -1,9 +1,4 @@
-from django.contrib.auth import authenticate, login
-from django.core.exceptions import BadRequest
-from django.db import IntegrityError
-from django.shortcuts import redirect, render
-from django.views.generic import FormView, TemplateView
-from django.contrib.auth.views import LoginView
+from django.contrib.auth.views import LoginView, LogoutView
 from django.views.generic import CreateView
 from django.urls import reverse, reverse_lazy
 
@@ -21,3 +16,7 @@ class Signup(CreateView):
     form_class = SignupForm
     template_name = "registration/signup.html"
     success_url = reverse_lazy("groups:index")
+
+
+class Logout(LogoutView):
+    next_page = "home"
