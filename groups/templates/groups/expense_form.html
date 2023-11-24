@@ -55,6 +55,10 @@ legend + .form-row.form-row {
         {{ form.amount }}
     </div>
 
+    <label class="form-row">
+        <input type="checkbox" id="toggleSplitEqually" /> Split equally
+    </label>
+
     <div class="form-row">
         {{ form.type.errors }}
         {{ form.type.label_tag }}
@@ -88,7 +92,8 @@ const typeField = form.type;
 const amountField = form.elements.amount;
 const splitFields = [...form.elements].filter(el => el.name.startsWith("split_"));
 const EXACT = "1",
-    PERCENTAGE = "2";
+    PERCENTAGE = "2",
+    SHARES = "3";
 
 function updateRemaining() {
     let el = document.getElementById("remaining-amount");
@@ -126,15 +131,36 @@ function hideAdjustmentsForExact() {
     }
 }
 
+function applySplitEqually() {
+    if (toggleSplitEqually.checked) {
+        splitFieldset.hidden = true;
+        typeField.value = SHARES;
+        typeField.closest(".form-row").hidden = true;
+        for (const field of splitFields) {
+            field.value = +field.name.endsWith("_split");
+        }
+    } else {
+        splitFieldset.hidden = false;
+        typeField.closest(".form-row").hidden = false;
+    }
+}
+
 typeField.addEventListener("change", updateRemaining);
 typeField.addEventListener("change", hideAdjustmentsForExact);
 amountField.addEventListener("input", updateRemaining);
 splitFields.forEach(field => field.addEventListener("input", updateRemaining));
 
-toggleAdjustments.checked = splitFields.some(field => field.name.endsWith("_adjustment") && field.value && field.value !== "0");
+toggleAdjustments.checked = splitFields.some(field => field.name.endsWith("_adjustment") && parseFloat(field.value || 0) !== 0);
 toggleAdjustments.addEventListener("change", hideAdjustmentsForExact);
+
+toggleSplitEqually.checked = (
+    splitFields.every(field => parseFloat(field.value || 0) === +field.name.endsWith("_split"))
+    && typeField.value === SHARES
+);
+toggleSplitEqually.addEventListener("change", applySplitEqually);
 
 updateRemaining();
 hideAdjustmentsForExact();
+applySplitEqually();
 </script>
 {% endblock %}
