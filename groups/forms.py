@@ -1,3 +1,5 @@
+import copy
+
 from django import forms
 from django.core.exceptions import ValidationError
 from django.db.models import Exists, OuterRef
@@ -25,10 +27,39 @@ class ListField(forms.MultiValueField):
 
 
 class MoneyField(forms.FloatField):
-    widget = forms.NumberInput(attrs={"type": "number"})
+    widget = forms.NumberInput(attrs={"type": "number", "step": "any"})
 
     def clean(self, value):
         return float_to_money(super().clean(value))
+
+
+class SplitWidget(forms.MultiWidget):
+    template_name = "groups/widgets/split_widget.html"
+
+    def __init__(self):
+        super().__init__(
+            {
+                "split": forms.NumberInput(attrs={"type": "number", "step": "any"}),
+                "adjustment": copy.deepcopy(MoneyField.widget),
+            }
+        )
+
+    def decompress(self, value):
+        return value
+
+
+class SplitField(forms.MultiValueField):
+    widget = SplitWidget
+
+    def __init__(self, **kwargs):
+        fields = (
+            forms.FloatField(initial=0),
+            MoneyField(initial=0),
+        )
+        super().__init__(fields=fields, **kwargs)
+
+    def compress(self, data_list):
+        return tuple(data_list)
 
 
 class ExpenseForm(forms.ModelForm):
@@ -62,7 +93,8 @@ class ExpenseForm(forms.ModelForm):
                 shares = split.shares
                 if shares_are_money(instance.type):
                     shares = money_to_float(shares)
-                initial[f"split_{split.user.username}"] = shares
+                adjustment = money_to_float(split.adjustment)
+                initial[f"split_{split.user.username}"] = (shares, adjustment)
 
         super().__init__(**kwargs, initial=initial)
 
@@ -72,7 +104,7 @@ class ExpenseForm(forms.ModelForm):
 
         self.split_fields = []
         for user in users:
-            field = forms.FloatField(label=user.username, initial=0)
+            field = SplitField(label=user.username, initial=(0, 0))
             field_key = f"split_{user.username}"
             self.fields[field_key] = field
             self.split_fields.append(self[field_key])
@@ -82,12 +114,12 @@ class ExpenseForm(forms.ModelForm):
 
         split_by_user = {}
         for user in self._users:
-            shares = self.cleaned_data[f"split_{user.username}"]
+            shares, adjustment = self.cleaned_data[f"split_{user.username}"]
             if shares_are_money(self.cleaned_data["type"]):
                 shares = float_to_money(shares)
             else:
                 shares = int(shares)
-            split_by_user[user] = shares
+            split_by_user[user] = (shares, adjustment)
 
         validate_expense_split(
             self.cleaned_data["type"], self.cleaned_data["amount"], split_by_user

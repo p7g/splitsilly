@@ -64,6 +64,10 @@ legend + .form-row.form-row {
     <fieldset class="form-row" id="splitFieldset">
         <legend>Split</legend>
 
+        <label class="form-row">
+            <input type="checkbox" id="toggleAdjustments" /> Enable adjustments
+        </label>
+
         {% for field in form.split_fields %}
             <div class="form-row">
                 {{ field.errors }}
@@ -101,7 +105,7 @@ function updateRemaining() {
     const isDollars = typeField.value === EXACT;
 
     if (isDollars) {
-        const remaining = parseFloat(amountField.value) - splitFields.reduce((acc, el) => acc + parseFloat(el.value || 0), 0);
+        const remaining = parseFloat(amountField.value || 0) - splitFields.reduce((acc, el) => acc + parseFloat(el.value || 0), 0);
         el.innerText = `$${remaining.toFixed(2)} remaining`;
     } else {
         const remaining = 100 - splitFields.reduce((acc, el) => acc + Math.floor(parseFloat(el.value || 0)), 0);
@@ -109,10 +113,28 @@ function updateRemaining() {
     }
 }
 
-typeField.onchange = updateRemaining;
-amountField.oninput = updateRemaining;
-splitFields.forEach(field => (field.oninput = updateRemaining));
+function hideAdjustmentsForExact() {
+    toggleAdjustments.parentElement.hidden = typeField.value === EXACT;
+
+    const adjustmentsEnabled = typeField.value !== EXACT && toggleAdjustments.checked;
+    for (const field of splitFields) {
+        if (field.name.endsWith("_adjustment")) {
+            if ((field.hidden = field.previousElementSibling.hidden = !adjustmentsEnabled)) {
+                field.value = 0;
+            }
+        }
+    }
+}
+
+typeField.addEventListener("change", updateRemaining);
+typeField.addEventListener("change", hideAdjustmentsForExact);
+amountField.addEventListener("input", updateRemaining);
+splitFields.forEach(field => field.addEventListener("input", updateRemaining));
+
+toggleAdjustments.checked = splitFields.some(field => field.name.endsWith("_adjustment") && field.value && field.value !== "0");
+toggleAdjustments.addEventListener("change", hideAdjustmentsForExact);
 
 updateRemaining();
+hideAdjustmentsForExact();
 </script>
 {% endblock %}

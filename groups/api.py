@@ -9,6 +9,9 @@ from identity.models import User
 from .models import Expense, ExpenseGroup, ExpenseGroupUser, ExpenseSplit
 from .templatetags.money import to_dollars
 
+# User: (shares, adjustment)
+Split = dict[User, tuple[int, int]]
+
 
 def create_expense_group(name: str) -> ExpenseGroup:
     return ExpenseGroup.objects.create(name=name)
@@ -33,21 +36,21 @@ def sync_expense_group_users(group: ExpenseGroup, users: Sequence[User]) -> None
     )
 
 
-def validate_expense_split(type_: Expense.Type, amount: int, split: dict[User, int]):
+def validate_expense_split(type_: Expense.Type, amount: int, split: Split):
     if type_ == Expense.Type.EXACT:
-        total = sum(split.values())
+        total = sum(shares + adjustment for shares, adjustment in split.values())
         if amount != total:
             raise ValidationError(
                 f"Split must add to {to_dollars(amount)}, got {to_dollars(total)}"
             )
     elif type_ == Expense.Type.PERCENTAGE:
-        total = sum(split.values())
+        total = sum(shares for shares, _adjustment in split.values())
         if total != 100:
             raise ValidationError(f"Split percentages must add to 100, got {total}")
     elif type_ == Expense.Type.SHARES:
-        if all(shares == 0 for shares in split.values()):
+        if all(shares == 0 for shares, _adjustment in split.values()):
             raise ValidationError("The total number of shares must be at least 1")
-        if any(shares < 0 for shares in split.values()):
+        if any(shares < 0 for shares, _adjustment in split.values()):
             raise ValidationError("Shares must be positive of zero")
 
 
@@ -58,7 +61,7 @@ def create_expense(
     payer: User,
     date: date,
     amount: int,
-    split: dict[User, int],
+    split: Split,
     _is_settle_up: bool = False,
 ) -> Expense:
     validate_expense_split(type_, amount, split)
@@ -73,8 +76,8 @@ def create_expense(
     )
 
     ExpenseSplit.objects.bulk_create(
-        ExpenseSplit(expense=expense, user=user, shares=shares)
-        for user, shares in split.items()
+        ExpenseSplit(expense=expense, user=user, shares=shares, adjustment=adjustment)
+        for user, (shares, adjustment) in split.items()
     )
 
     return expense
@@ -87,7 +90,7 @@ def update_expense(
     payer: User,
     date: date,
     amount: int,
-    split: dict[User, int],
+    split: Split,
 ) -> None:
     expense.name = name
     expense.type = type_
@@ -97,16 +100,18 @@ def update_expense(
     expense.save()
 
     old_split = {
-        split.user: split.shares
+        split.user: (split.shares, split.adjustment)
         for split in expense.expensesplit_set.select_related("user")
     }
     expense.expensesplit_set.filter(user__in=old_split.keys() - split.keys()).delete()
     existing_splits = expense.expensesplit_set.all()
     for existing_split in existing_splits:
-        existing_split.shares = split[existing_split.user]
+        existing_split.shares, existing_split.adjustment = split[existing_split.user]
     ExpenseSplit.objects.bulk_update(existing_splits, ["shares"])
     ExpenseSplit.objects.bulk_create(
-        ExpenseSplit(expense=expense, user=user, shares=split[user])
+        ExpenseSplit(
+            expense=expense, user=user, shares=split[user][0], adjustment=split[user][1]
+        )
         for user in split.keys() - old_split.keys()
     )
 
@@ -149,25 +154,24 @@ def _calculate_expense_debts(expense: Expense) -> dict[User, int]:
     splits = expense.expensesplit_set.select_related("user").all()
 
     if expense.type == Expense.Type.EXACT:
-        return {split.user: split.shares for split in splits}
-    elif expense.type == Expense.Type.PERCENTAGE:
-        return {
-            split.user: int(expense.amount * (float(split.shares) / 100))
+        return {split.user: split.shares + split.adjustment for split in splits}
+
+    base_amount = expense.amount - sum(split.adjustment for split in splits)
+
+    if expense.type == Expense.Type.PERCENTAGE:
+        debt = {
+            split.user: int(base_amount * (float(split.shares) / 100))
             for split in splits
         }
     elif expense.type == Expense.Type.SHARES:
         total_shares = sum(split.shares for split in splits)
-        return {
-            split.user: int(expense.amount * float(split.shares) / total_shares)
+        debt = {
+            split.user: int(base_amount * float(split.shares) / total_shares)
             for split in splits
         }
-    elif expense.type == Expense.Type.ADJUSTMENT:
-        base_debt = int(
-            (expense.amount - sum(split.shares for split in splits)) / len(splits)
-        )
-        return {split.user: base_debt + split.shares for split in splits}
     else:
         raise NotImplementedError(expense.type)
+    return {split.user: debt[split.user] + split.adjustment for split in splits}
 
 
 def simplify_debts(debts: dict[tuple[User, User], int]) -> dict[tuple[User, User], int]:
@@ -252,7 +256,7 @@ def settle_up(
         payer,
         date,
         amount,
-        {payee: 1},
+        {payee: (1, 0)},
         _is_settle_up=True,
     )
 
@@ -267,5 +271,5 @@ def update_settle_up(
         payer,
         date,
         amount,
-        {payee: 1},
+        {payee: (1, 0)},
     )

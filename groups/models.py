@@ -60,13 +60,14 @@ class Expense(models.Model):
         EXACT = enum.auto()
         PERCENTAGE = enum.auto()
         SHARES = enum.auto()
+
+        # Removed
         ADJUSTMENT = enum.auto()
 
     EXPENSE_TYPE_CHOICES = [
         (Type.EXACT, "Exact"),
         (Type.PERCENTAGE, "Percentage"),
         (Type.SHARES, "Shares"),
-        (Type.ADJUSTMENT, "Adjustment"),
     ]
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -91,8 +92,6 @@ class Expense(models.Model):
             return "by percentage"
         elif self.type == self.Type.SHARES:
             return "by shares"
-        elif self.type == self.Type.ADJUSTMENT:
-            return "by adjustment"
         else:
             raise NotImplementedError(self.type)
 
@@ -108,22 +107,24 @@ class ExpenseSplit(models.Model):
     # FIXME: cascade?
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     shares = models.IntegerField()
+    adjustment = models.IntegerField(default=0)
 
     @property
     def formatted_shares(self) -> str:
         if self.expense.type == Expense.Type.EXACT:
-            return to_dollars(self.shares)
+            return to_dollars(self.shares + self.adjustment)
         elif self.expense.type == Expense.Type.PERCENTAGE:
-            return f"{self.shares}%"
+            formatted_shares = f"{self.shares}%"
         elif self.expense.type == Expense.Type.SHARES:
-            return f"{self.shares} shares"
-        elif self.expense.type == Expense.Type.ADJUSTMENT:
-            if self.shares == 0:
-                return f"N"
-            dollars = to_dollars(abs(self.shares))
-            if self.shares > 0:
-                return f"N + {dollars}"
-            else:
-                return f"N - {dollars}"
+            formatted_shares = f"{self.shares} shares"
         else:
             raise NotImplementedError(self.expense.type)
+
+        if not self.adjustment:
+            return formatted_shares
+
+        adjustment = to_dollars(abs(self.adjustment))
+        if self.shares > 0:
+            return f"{formatted_shares} + {adjustment}"
+        else:
+            return f"{formatted_shares} - {adjustment}"
