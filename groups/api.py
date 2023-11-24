@@ -107,7 +107,9 @@ def update_expense(
     existing_splits = expense.expensesplit_set.all()
     for existing_split in existing_splits:
         existing_split.shares, existing_split.adjustment = split[existing_split.user]
-    ExpenseSplit.objects.bulk_update(existing_splits, ["shares"])
+    ExpenseSplit.objects.bulk_update(
+        existing_splits, ["adjustment", "shares", "updated_at"]
+    )
     ExpenseSplit.objects.bulk_create(
         ExpenseSplit(
             expense=expense, user=user, shares=split[user][0], adjustment=split[user][1]
