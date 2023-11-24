@@ -159,14 +159,9 @@ def _calculate_expense_debts(expense: Expense) -> dict[User, int]:
         return {split.user: split.shares + split.adjustment for split in splits}
 
     base_amount = expense.amount - sum(split.adjustment for split in splits)
+    total_shares = sum(split.shares for split in splits)
 
-    if expense.type == Expense.Type.PERCENTAGE:
-        debt = {
-            split.user: int(base_amount * (float(split.shares) / 100))
-            for split in splits
-        }
-    elif expense.type == Expense.Type.SHARES:
-        total_shares = sum(split.shares for split in splits)
+    if expense.type in (Expense.Type.SHARES, Expense.Type.PERCENTAGE):
         debt = {
             split.user: int(base_amount * float(split.shares) / total_shares)
             for split in splits
