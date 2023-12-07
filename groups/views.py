@@ -123,7 +123,8 @@ class CreateExpense(ExpenseFormViewMixin, CreateView):
         result = super().form_valid(form)
 
         # Email everyone except the creator
-        expense = form.instance
+        expense = self.object
+        assert isinstance(expense, Expense)
         debts = calculate_expense_debts(expense)
 
         for user, amount_owed in debts.items():
@@ -156,7 +157,8 @@ class UpdateExpense(ExpenseFormViewMixin, UpdateView):
         result = super().form_valid(form)
 
         # Email everyone except the creator
-        expense = form.instance
+        expense = self.object
+        assert isinstance(expense, Expense)
         debts = calculate_expense_debts(expense)
 
         for user, amount_owed in debts.items():
