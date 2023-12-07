@@ -177,7 +177,7 @@ class UpdateExpense(ExpenseFormViewMixin, UpdateView):
                 )
             elif user == expense.payer:
                 user.send_email(
-                    f"{self.request.user.username} added a new expense in {expense.group.name}",
+                    f"{self.request.user.username} updated an expense in {expense.group.name}",
                     f"You paid {to_dollars(expense.amount)} for {expense.name} on {expense.date.isoformat()}. "
                     f"You are now owed {to_dollars(expense.amount - amount_owed)}.",
                 )
