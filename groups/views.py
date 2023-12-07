@@ -9,6 +9,7 @@ from django.views.generic import CreateView, DeleteView, UpdateView
 from .api import calculate_debts, calculate_expense_debts, simplify_debts
 from .forms import ExpenseForm, ExpenseGroupSettingsForm, SettleUpForm
 from .models import Expense, ExpenseGroup
+from .templatetags.money import to_dollars
 
 
 @login_required
@@ -118,6 +119,29 @@ class CreateExpense(ExpenseFormViewMixin, CreateView):
         initial["payer"] = self.request.user
         return initial
 
+    def form_valid(self, form):
+        result = super().form_valid(form)
+
+        # Email everyone except the creator
+        expense = form.instance
+        debts = calculate_expense_debts(expense)
+
+        for user, amount_owed in debts.items():
+            if user == self.request.user:
+                continue
+            if expense.is_settle_up:
+                user.send_email(
+                    f"{expense.payer.username} settled up with you",
+                    f"They paid you {to_dollars(-amount_owed)}.",
+                )
+            else:
+                user.send_email(
+                    f"{self.request.user.username} added a new expense in {expense.group.name}",
+                    f"You owe {to_dollars(amount_owed)} to {expense.payer.username} for {expense.name} on {expense.date.isoformat()}.",
+                )
+
+        return result
+
 
 class UpdateExpense(ExpenseFormViewMixin, UpdateView):
     pk_url_kwarg = "expense_id"
@@ -127,6 +151,29 @@ class UpdateExpense(ExpenseFormViewMixin, UpdateView):
         return get_object_or_404(
             Expense.objects.for_user(self.request.user), pk=self.kwargs["expense_id"]
         ).group
+
+    def form_valid(self, form):
+        result = super().form_valid(form)
+
+        # Email everyone except the creator
+        expense = form.instance
+        debts = calculate_expense_debts(expense)
+
+        for user, amount_owed in debts.items():
+            if user == self.request.user:
+                continue
+            if expense.is_settle_up:
+                user.send_email(
+                    f"{expense.payer.username} updated their settle up with you",
+                    f"They now paid you {to_dollars(amount_owed)}.",
+                )
+            else:
+                user.send_email(
+                    f"{self.request.user.username} updated an expense in {expense.group.name}",
+                    f"You now owe {to_dollars(amount_owed)} to {expense.payer.username} for {expense.name} on {expense.date.isoformat()}",
+                )
+
+        return result
 
 
 class DeleteExpense(DeleteView):
