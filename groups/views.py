@@ -135,6 +135,12 @@ class CreateExpense(ExpenseFormViewMixin, CreateView):
                     f"{expense.payer.username} settled up with you",
                     f"They paid you {to_dollars(-amount_owed)}.",
                 )
+            elif user == expense.payer:
+                user.send_email(
+                    f"{self.request.user.username} added a new expense in {expense.group.name}",
+                    f"You paid {to_dollars(expense.amount)} for {expense.name} on {expense.date.isoformat()}. "
+                    f"You are owed {to_dollars(expense.amount - amount_owed)}.",
+                )
             else:
                 user.send_email(
                     f"{self.request.user.username} added a new expense in {expense.group.name}",
@@ -168,6 +174,12 @@ class UpdateExpense(ExpenseFormViewMixin, UpdateView):
                 user.send_email(
                     f"{expense.payer.username} updated their settle up with you",
                     f"They now paid you {to_dollars(amount_owed)}.",
+                )
+            elif user == expense.payer:
+                user.send_email(
+                    f"{self.request.user.username} added a new expense in {expense.group.name}",
+                    f"You paid {to_dollars(expense.amount)} for {expense.name} on {expense.date.isoformat()}. "
+                    f"You are now owed {to_dollars(expense.amount - amount_owed)}.",
                 )
             else:
                 user.send_email(
