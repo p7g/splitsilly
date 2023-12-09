@@ -8,189 +8,199 @@ from groups.models import Expense, ExpenseGroup, ExpenseGroupUser, ExpenseSplit
 pytestmark = pytest.mark.django_db
 
 
-@pytest.fixture
-def expense_group():
-    group = api.create_expense_group("test")
-    api.add_expense_group_user(group, "A")
-    api.add_expense_group_user(group, "B")
-    api.add_expense_group_user(group, "C")
-    return group
+def test_exact_split(expensegroup_with_users, users):
+    a, b, c = users["a"], users["b"], users["c"]
 
-
-def test_exact_split(expense_group):
     expense = api.create_expense(
-        expense_group,
+        expensegroup_with_users,
+        "test",
         Expense.Type.EXACT,
-        payer="A",
+        payer=a,
         date=date.today(),
         amount=100,
         split={
-            "A": 50,
-            "B": 25,
-            "C": 25,
+            a: (50, 0),
+            b: (25, 0),
+            c: (25, 0),
         },
     )
 
     assert api.calculate_expense_debts(expense) == {
-        "A": 50,
-        "B": 25,
-        "C": 25,
+        a: 50,
+        b: 25,
+        c: 25,
     }
 
 
-def test_percentage_split(expense_group):
+def test_percentage_split(expensegroup_with_users, users):
+    a, b, c = users["a"], users["b"], users["c"]
+
     expense = api.create_expense(
-        expense_group,
+        expensegroup_with_users,
+        "test",
         Expense.Type.PERCENTAGE,
-        payer="A",
+        payer=a,
         date=date.today(),
         amount=200,
         split={
-            "A": 50,
-            "B": 25,
-            "C": 25,
+            a: (50, 0),
+            b: (25, 0),
+            c: (25, 0),
         },
     )
 
     assert api.calculate_expense_debts(expense) == {
-        "A": 100,
-        "B": 50,
-        "C": 50,
+        a: 100,
+        b: 50,
+        c: 50,
     }
 
 
-def test_shares_split(expense_group):
+def test_shares_split(expensegroup_with_users, users):
+    a, b, c = users["a"], users["b"], users["c"]
+
     expense = api.create_expense(
-        expense_group,
+        expensegroup_with_users,
+        "test",
         Expense.Type.SHARES,
-        payer="A",
+        payer=a,
         date=date.today(),
         amount=180,
         split={
-            "A": 1,
-            "B": 1,
-            "C": 1,
+            a: (1, 0),
+            b: (1, 0),
+            c: (1, 0),
         },
     )
 
     assert api.calculate_expense_debts(expense) == {
-        "A": 60,
-        "B": 60,
-        "C": 60,
+        a: 60,
+        b: 60,
+        c: 60,
     }
 
     expense = api.create_expense(
-        expense_group,
+        expensegroup_with_users,
+        "test",
         Expense.Type.SHARES,
-        payer="A",
+        payer=a,
         date=date.today(),
         amount=200,
         split={
-            "A": 1,
-            "B": 1,
-            "C": 1,
+            a: (1, 0),
+            b: (1, 0),
+            c: (1, 0),
         },
     )
 
     assert api.calculate_expense_debts(expense) == {
         # Truncated
-        "A": 66,
-        "B": 66,
-        "C": 66,
+        a: 66,
+        b: 66,
+        c: 66,
     }
 
     expense = api.create_expense(
-        expense_group,
+        expensegroup_with_users,
+        "test",
         Expense.Type.SHARES,
-        payer="A",
+        payer=a,
         date=date.today(),
         amount=200,
         split={
-            "A": 1,
-            "B": 2,
-            "C": 1,
+            a: (1, 0),
+            b: (2, 0),
+            c: (1, 0),
         },
     )
 
     assert api.calculate_expense_debts(expense) == {
         # Truncated
-        "A": 50,
-        "B": 100,
-        "C": 50,
+        a: 50,
+        b: 100,
+        c: 50,
     }
 
 
-def test_adjustment_split(expense_group):
+def test_adjustment_split(expensegroup_with_users, users):
+    a, b, c = users["a"], users["b"], users["c"]
+
     expense = api.create_expense(
-        expense_group,
-        Expense.Type.ADJUSTMENT,
-        payer="A",
+        expensegroup_with_users,
+        "test",
+        Expense.Type.SHARES,
+        payer=a,
         date=date.today(),
         amount=30,
         split={
-            "A": 3,
-            "B": -2,
-            "C": 5,
+            a: (1, 3),
+            b: (1, -2),
+            c: (1, 5),
         },
     )
 
     assert api.calculate_expense_debts(expense) == {
-        "A": 11,
-        "B": 6,
-        "C": 13,
+        a: 11,
+        b: 6,
+        c: 13,
     }
 
 
-def test_group_expenses(expense_group):
-    assert not expense_group.expense_set.exists()
+def test_group_expenses(expensegroup_with_users, users):
+    a, b, c = users["a"], users["b"], users["c"]
+
+    assert not expensegroup_with_users.expense_set.exists()
 
     api.create_expense(
-        expense_group,
+        expensegroup_with_users,
+        "test",
         Expense.Type.EXACT,
-        payer="A",
+        payer=a,
         date=date.today(),
         amount=100,
         split={
-            "A": 50,
-            "B": 25,
-            "C": 25,
+            a: (50, 0),
+            b: (25, 0),
+            c: (25, 0),
         },
     )
     api.create_expense(
-        expense_group,
+        expensegroup_with_users,
+        "test",
         Expense.Type.SHARES,
-        payer="B",
+        payer=b,
         date=date.today(),
         amount=200,
         split={
-            "A": 1,
-            "B": 1,
-            "C": 1,
+            a: (1, 0),
+            b: (1, 0),
+            c: (1, 0),
         },
     )
     api.create_expense(
-        expense_group,
-        Expense.Type.ADJUSTMENT,
-        payer="C",
+        expensegroup_with_users,
+        "test",
+        Expense.Type.SHARES,
+        payer=c,
         date=date.today(),
         amount=30,
         split={
-            "A": 3,
-            "B": -2,
-            "C": 5,
+            a: (1, 3),
+            b: (1, -2),
+            c: (1, 5),
         },
     )
 
-    assert api.calculate_debts(expense_group) == {
-        ("B", "A"): 25,
-        ("C", "A"): 25,
-        ("A", "B"): 66,
-        ("C", "B"): 66,
-        ("A", "C"): 11,
-        ("B", "C"): 6,
+    assert api.calculate_debts(expensegroup_with_users) == {
+        (b, a): 25,
+        (c, a): 25,
+        (a, b): 66,
+        (c, b): 66,
+        (a, c): 11,
+        (b, c): 6,
     }
 
-    assert api.simplify_debts(api.calculate_debts(expense_group)) == {
-        ("A", "B"): 27,
-        ("C", "B"): 74,
+    assert api.simplify_debts(api.calculate_debts(expensegroup_with_users)) == {
+        (a, b): 27,
+        (c, b): 74,
     }
