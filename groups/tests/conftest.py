@@ -4,8 +4,6 @@ from groups import api as groups_api
 from groups.models import ExpenseGroup
 from identity.models import User
 
-pytestmark = pytest.mark.django_db
-
 
 @pytest.fixture
 def expensegroup():
