@@ -173,24 +173,15 @@ def _calculate_expense_debts(expense: Expense) -> dict[User, int]:
 
 
 def simplify_debts(debts: Debts) -> Debts:
-    prev_debts = debts
-    for _ in range(10):
-        debts = _simplify_debts(debts)
-        if debts == prev_debts:
-            break
-    return debts
+    debts = _simplify_mutual_owing(debts)
+    debts = _simplify_transient_debts(debts)
+    return _simplify_mutual_owing(debts)
 
 
-def _simplify_debts(debts: Debts) -> Debts:
+def _simplify_mutual_owing(debts: Debts) -> Debts:
     all_users = {user for edge in debts.keys() for user in edge}
-
-    lenders_by_user = defaultdict(set)
-    for ower, lender in debts:
-        lenders_by_user[ower].add(lender)
-
     new_debts = debts.copy()
 
-    # Mutual owing
     for a in all_users:
         for b in all_users:
             if a == b:
@@ -200,18 +191,24 @@ def _simplify_debts(debts: Debts) -> Debts:
             if (a, b) in new_debts and (b, a) in new_debts:
                 a_owes_b = new_debts.pop((a, b))
                 b_owes_a = new_debts.pop((b, a))
-                lenders_by_user[a].discard(b)
-                lenders_by_user[b].discard(a)
 
                 diff = a_owes_b - b_owes_a
                 if diff == 0:
                     continue
                 elif diff > 0:
                     new_debts[a, b] = diff
-                    lenders_by_user[a].add(b)
                 else:
                     new_debts[b, a] = -diff
-                    lenders_by_user[b].add(a)
+
+    return new_debts
+
+
+def _simplify_transient_debts(debts: Debts) -> Debts:
+    all_users = {user for edge in debts.keys() for user in edge}
+    new_debts = debts.copy()
+    lenders_by_user = defaultdict(set)
+    for ower, lender in debts:
+        lenders_by_user[ower].add(lender)
 
     for a in all_users:
         for b in all_users:
