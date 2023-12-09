@@ -54,17 +54,15 @@
                 <th>Expense</th>
                 <th>Amount</th>
                 <th>Paid by</th>
-                <th></th>
             </tr>
         </thead>
         <tbody>
             {% for expense in month_expenses %}
             <tr>
                 <td>{{ expense.date.isoformat }}</td>
-                <td>{{ expense.name }}</td>
+                <td><a href="{{ expense.get_absolute_url }}">{{ expense.name }}</a></td>
                 <td>{{ expense.amount|to_dollars }}</td>
                 <td>{{ expense.payer }}</td>
-                <td><a href="{{ expense.get_absolute_url }}">Details</a></td>
             </tr>
             {% endfor %}
         </tbody>
