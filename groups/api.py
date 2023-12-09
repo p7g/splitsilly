@@ -11,6 +11,7 @@ from .templatetags.money import to_dollars
 
 # User: (shares, adjustment)
 Split = dict[User, tuple[int, int]]
+Debts = dict[tuple[User, User], int]
 
 
 def create_expense_group(name: str) -> ExpenseGroup:
@@ -118,7 +119,7 @@ def update_expense(
     )
 
 
-def calculate_debts(group: ExpenseGroup) -> dict[tuple[User, User], int]:
+def calculate_debts(group: ExpenseGroup) -> Debts:
     debts = {}
 
     for expense in group.expense_set.prefetch_related(
@@ -171,7 +172,16 @@ def _calculate_expense_debts(expense: Expense) -> dict[User, int]:
     return {split.user: debt[split.user] + split.adjustment for split in splits}
 
 
-def simplify_debts(debts: dict[tuple[User, User], int]) -> dict[tuple[User, User], int]:
+def simplify_debts(debts: Debts) -> Debts:
+    prev_debts = debts
+    for _ in range(10):
+        debts = _simplify_debts(debts)
+        if debts == prev_debts:
+            break
+    return debts
+
+
+def _simplify_debts(debts: Debts) -> Debts:
     all_users = {user for edge in debts.keys() for user in edge}
 
     lenders_by_user = defaultdict(set)
