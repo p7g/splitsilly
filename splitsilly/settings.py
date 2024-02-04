@@ -13,9 +13,12 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 import os
 from pathlib import Path
 
+import sentry_sdk
 from dotenv import load_dotenv
 
 load_dotenv()
+
+sentry_sdk.init(dsn=os.getenv("SENTRY_DSN"))
 
 ENV = os.getenv("ENV")
 
