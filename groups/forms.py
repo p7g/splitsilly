@@ -60,7 +60,7 @@ class SplitField(forms.MultiValueField):
 
     def __init__(self, **kwargs):
         fields = (
-            forms.FloatField(initial=0),
+            forms.DecimalField(initial=0),
             MoneyField(initial=0),
         )
         super().__init__(fields=fields, **kwargs)
