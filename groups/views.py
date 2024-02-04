@@ -6,7 +6,12 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import CreateView, DeleteView, UpdateView
 
-from .api import calculate_debts, calculate_expense_debts, simplify_debts
+from .api import (
+    calculate_debts,
+    calculate_expense_debts,
+    simplify_debts,
+    simplify_mutual_owing,
+)
 from .forms import ExpenseForm, ExpenseGroupSettingsForm, SettleUpForm
 from .models import Expense, ExpenseGroup
 from .templatetags.money import to_dollars
@@ -34,6 +39,8 @@ def group_home(request, group_id: int):
     debts = calculate_debts(group)
     if group.simplify_debts:
         debts = simplify_debts(debts)
+    else:
+        debts = simplify_mutual_owing(debts)
 
     expenses_by_year_month = []
     for expense in group.expense_set.order_by("-date", "-created_at"):

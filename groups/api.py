@@ -176,7 +176,7 @@ def _calculate_expense_debts(expense: Expense) -> dict[User, int]:
 
 def simplify_debts(debts: Debts) -> Debts:
     for _ in range(10):
-        new_debts = _simplify_mutual_owing(debts)
+        new_debts = simplify_mutual_owing(debts)
         new_debts = _simplify_transient_debts(new_debts)
         if new_debts == debts:
             break
@@ -188,7 +188,7 @@ def simplify_debts(debts: Debts) -> Debts:
     return debts
 
 
-def _simplify_mutual_owing(debts: Debts) -> Debts:
+def simplify_mutual_owing(debts: Debts) -> Debts:
     all_users = {user for edge in debts.keys() for user in edge}
     new_debts = debts.copy()
 
