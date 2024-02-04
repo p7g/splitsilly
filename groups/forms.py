@@ -90,7 +90,6 @@ class ExpenseForm(forms.ModelForm):
 
         initial = kwargs.pop("initial", {})
         initial.setdefault("group", group.id)
-        initial.setdefault("date", timezone.now().date())
 
         instance = kwargs.get("instance")
         if instance:
@@ -102,6 +101,8 @@ class ExpenseForm(forms.ModelForm):
                     shares = money_to_float(shares)
                 adjustment = money_to_float(split.adjustment)
                 initial[f"split_{split.user.username}"] = (shares, adjustment)
+        else:
+            initial.setdefault("date", timezone.now().date())
 
         super().__init__(**kwargs, initial=initial)
 
@@ -174,7 +175,6 @@ class SettleUpForm(forms.ModelForm):
 
         initial = kwargs.pop("initial", {})
         initial.setdefault("group", group.id)
-        initial.setdefault("date", timezone.now().date())
 
         instance = kwargs.get("instance")
         if instance and instance.pk:
@@ -182,6 +182,8 @@ class SettleUpForm(forms.ModelForm):
             initial["payee"] = (
                 instance.expensesplit_set.select_related("user").get().user
             )
+        else:
+            initial.setdefault("date", timezone.now().date())
 
         super().__init__(**kwargs, initial=initial)
         self._users = users
