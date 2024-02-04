@@ -90,3 +90,21 @@ def test_bug(users):
     }
 
     assert simplify_debts(debts) == {(a, c): 3469}
+
+
+def test_bug2(users):
+    a, b, c = users["a"], users["b"], users["c"]
+
+    debts = {
+        (a, b): 15707,
+        (c, b): 238073,
+        (b, a): 20551,
+        (c, a): 196098,
+        (a, c): 212547,
+        (b, c): 215552,
+    }
+
+    assert simplify_debts(debts) == {
+        (a, b): 11605,
+        (c, b): 6072,
+    }
