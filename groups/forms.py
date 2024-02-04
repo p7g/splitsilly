@@ -26,11 +26,18 @@ class ListField(forms.MultiValueField):
         return data_list
 
 
-class MoneyField(forms.FloatField):
-    widget = forms.NumberInput(attrs={"type": "number", "step": "any"})
+class MoneyField(forms.DecimalField):
+    widget = forms.NumberInput(attrs={"type": "number"})
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs, decimal_places=2, min_value=0)
 
     def clean(self, value):
         return float_to_money(super().clean(value))
+
+    def widget_attrs(self, widget):
+        attrs = super().widget_attrs(widget)
+        return attrs | {"type": "number"}
 
 
 class SplitWidget(forms.MultiWidget):

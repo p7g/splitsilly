@@ -1,6 +1,7 @@
 from collections import defaultdict
 from collections.abc import Sequence
 from datetime import date
+from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 
@@ -140,7 +141,7 @@ def shares_are_money(expense_type: Expense.Type) -> bool:
     return expense_type in (Expense.Type.EXACT, Expense.Type.ADJUSTMENT)
 
 
-def float_to_money(value: float) -> int:
+def float_to_money(value: Decimal) -> int:
     return int(value * 100)
 
 
