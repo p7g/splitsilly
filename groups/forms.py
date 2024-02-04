@@ -187,8 +187,8 @@ class SettleUpForm(forms.ModelForm):
             update_settle_up(
                 self.instance,
                 self.cleaned_data["payer"],
-                self.cleaned_data["payee"],
                 self.cleaned_data["date"],
+                self.cleaned_data["payee"],
                 self.cleaned_data["amount"],
             )
             return self.instance
