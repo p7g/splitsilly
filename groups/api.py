@@ -3,6 +3,7 @@ from collections.abc import Sequence
 from datetime import date
 from decimal import Decimal
 
+import sentry_sdk
 from django.core.exceptions import ValidationError
 
 from identity.models import User
@@ -127,12 +128,12 @@ def calculate_debts(group: ExpenseGroup) -> Debts:
         "payer", "expensesplit_set__user"
     ):
         expense_debts = calculate_expense_debts(expense)
-        for owee, debt in expense_debts.items():
-            if owee == expense.payer:
+        for borrower, debt in expense_debts.items():
+            if borrower == expense.payer:
                 continue
-            if (owee, expense.payer) not in debts:
-                debts[owee, expense.payer] = 0
-            debts[owee, expense.payer] += debt
+            if (borrower, expense.payer) not in debts:
+                debts[borrower, expense.payer] = 0
+            debts[borrower, expense.payer] += debt
 
     return debts
 
@@ -174,9 +175,17 @@ def _calculate_expense_debts(expense: Expense) -> dict[User, int]:
 
 
 def simplify_debts(debts: Debts) -> Debts:
-    debts = _simplify_mutual_owing(debts)
-    debts = _simplify_transient_debts(debts)
-    return _simplify_mutual_owing(debts)
+    for _ in range(10):
+        new_debts = _simplify_mutual_owing(debts)
+        new_debts = _simplify_transient_debts(new_debts)
+        if new_debts == debts:
+            break
+        debts = new_debts
+    else:
+        sentry_sdk.capture_message(
+            "Failed to simplify debts after 10 tries", level="error"
+        )
+    return debts
 
 
 def _simplify_mutual_owing(debts: Debts) -> Debts:
@@ -223,13 +232,13 @@ def _simplify_transient_debts(debts: Debts) -> Debts:
             lenders_to_b = lenders_by_user[b]
             if new_debts.get((a, b)) and len(lenders_to_b) == 1:
                 (c,) = lenders_to_b
+                if a == c:
+                    continue
+
                 a_owes_b = new_debts.pop((a, b))
                 b_owes_c = new_debts.pop((b, c))
                 lenders_by_user[a].discard(b)
                 lenders_by_user[b].discard(c)
-
-                if a == c:
-                    continue
 
                 # If A owes more to B than B owes to C, A owes C that amount
                 # and B the remainder. Otherwise, A owes C the amount A owed to
