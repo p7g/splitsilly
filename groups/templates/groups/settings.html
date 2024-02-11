@@ -25,6 +25,12 @@
     </div>
 
     <div class="form-row">
+        {{ form.name.errors }}
+        {{ form.name.label_tag }}
+        {{ form.name }}
+    </div>
+
+    <div class="form-row">
         {{ form.simplify_debts.errors }}
         {{ form.simplify_debts }}
         {{ form.simplify_debts.label_tag }}

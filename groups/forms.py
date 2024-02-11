@@ -228,10 +228,25 @@ class CommaSeparatedCharField(forms.Field):
         return ", ".join(value)
 
 
+class ExpenseGroupForm(forms.ModelForm):
+    class Meta:
+        model = ExpenseGroup
+        fields = "__all__"
+        widgets = {
+            "name": forms.TextInput,
+        }
+
+
 class ExpenseGroupSettingsForm(forms.ModelForm):
     class Meta:
         model = ExpenseGroup
-        fields = ("simplify_debts",)
+        fields = (
+            "name",
+            "simplify_debts",
+        )
+        widgets = {
+            "name": forms.TextInput,
+        }
 
     users = CommaSeparatedCharField()
 
