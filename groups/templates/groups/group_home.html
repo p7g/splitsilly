@@ -22,6 +22,7 @@
 <h1 class="heading">
     {{ group.name }}
     <small class="settings-link-container">
+        <a href="{% url 'groups:index' %}">Home</a>
         <a href="{% url 'groups:group_settings' group.id %}">Group settings</a>
         <a href="{% url 'identity:logout' %}">Log out</a>
     </small>
