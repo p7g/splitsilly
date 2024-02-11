@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load money %}
 
-{% block title %}{{ group.name }} | Splitsilly{% endblock %}
+{% block title %}{{ group.name }} | {{ block.super }}{% endblock %}
 
 {% block head %}
 <style>

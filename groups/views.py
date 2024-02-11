@@ -19,8 +19,34 @@ from .templatetags.money import to_dollars
 
 @login_required
 def groups_index(request):
-    group = get_object_or_404(ExpenseGroup.objects.for_user(request.user))
-    return redirect(group)
+    groups = ExpenseGroup.objects.for_user(request.user).prefetch_related(
+        "expense_set__payer", "expense_set__expensesplit_set__user"
+    )
+
+    groups_and_amount_owed = []
+    for group in groups:
+        debts = calculate_debts(group)
+        if group.simplify_debts:
+            debts = simplify_debts(debts)
+        else:
+            debts = simplify_mutual_owing(debts)
+
+        viewer_owes = 0
+        for borrower, lender in debts:
+            if borrower == request.user:
+                viewer_owes += debts[borrower, lender]
+            elif lender == request.user:
+                viewer_owes -= debts[borrower, lender]
+
+        groups_and_amount_owed.append((group, viewer_owes))
+
+    return render(
+        request,
+        "groups/home.html",
+        {
+            "groups_and_amount_owed": groups_and_amount_owed,
+        },
+    )
 
 
 @login_required

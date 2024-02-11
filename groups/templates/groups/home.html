@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load money %}
+
+{% block head %}
+<style>
+.settings-link-container {
+    float: right;
+    font-size: 1rem;
+    font-weight: 400;
+}
+
+.groups-table {
+    width: 100%;
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<h1 class="heading">
+    Splitsilly
+    <small class="settings-link-container">
+        <a href="{% url 'identity:logout' %}">Log out</a>
+    </small>
+</h1>
+
+{# show current debts #}
+<section>
+    <h2 class="heading">Groups</h2>
+
+    <p>
+        {# <a href="{% url 'groups:group_create' %}">Create new group</a> #}
+    </p>
+
+    <table class="groups-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>You owe</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for group, amount_owed in groups_and_amount_owed %}
+            <tr>
+                <td><a href="{{ group.get_absolute_url }}">{{ group.name }}</a></td>
+                <td>{{ amount_owed|to_dollars }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}
