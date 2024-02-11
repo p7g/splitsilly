@@ -232,6 +232,9 @@ class DeleteExpense(DeleteView):
     context_object_name = "expense"
     model = Expense
 
+    def get_queryset(self):
+        return super().get_queryset().for_user(self.request.user)
+
     def get_success_url(self):
         return self.object.group.get_absolute_url()
 
