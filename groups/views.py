@@ -53,7 +53,7 @@ def group_home(request, group_id: int):
 
     return render(
         request,
-        "groups/home.html",
+        "groups/group_home.html",
         {
             "group": group,
             "expenses": expenses_by_year_month,
