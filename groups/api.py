@@ -4,6 +4,7 @@ from datetime import date
 from decimal import Decimal
 
 import sentry_sdk
+from ddtrace import tracer
 from django.core.exceptions import ValidationError
 
 from identity.models import User
@@ -121,6 +122,7 @@ def update_expense(
     )
 
 
+@tracer.wrap()
 def calculate_debts(group: ExpenseGroup) -> Debts:
     debts = {}
 
@@ -150,6 +152,7 @@ def money_to_float(value: int) -> float:
     return float(value) / 100
 
 
+@tracer.wrap()
 def calculate_expense_debts(expense: Expense) -> dict[User, int]:
     debts = _calculate_expense_debts(expense)
     return {user: amount for user, amount in debts.items() if amount}
@@ -174,8 +177,10 @@ def _calculate_expense_debts(expense: Expense) -> dict[User, int]:
     return {split.user: debt[split.user] + split.adjustment for split in splits}
 
 
+@tracer.wrap()
 def simplify_debts(debts: Debts) -> Debts:
-    for _ in range(10):
+    i = 0
+    for i in range(1, 11):
         new_debts = simplify_mutual_owing(debts)
         new_debts = _simplify_transient_debts(new_debts)
         if new_debts == debts:
@@ -185,9 +190,13 @@ def simplify_debts(debts: Debts) -> Debts:
         sentry_sdk.capture_message(
             "Failed to simplify debts after 10 tries", level="error"
         )
+    with tracer.current_span() as span:
+        if span:
+            span.set_tag("iterations", i)
     return debts
 
 
+@tracer.wrap()
 def simplify_mutual_owing(debts: Debts) -> Debts:
     all_users = {user for edge in debts.keys() for user in edge}
     new_debts = debts.copy()
@@ -213,6 +222,7 @@ def simplify_mutual_owing(debts: Debts) -> Debts:
     return new_debts
 
 
+@tracer.wrap()
 def _simplify_transient_debts(debts: Debts) -> Debts:
     all_users = {user for edge in debts.keys() for user in edge}
     new_debts = debts.copy()
