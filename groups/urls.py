@@ -2,6 +2,7 @@ from django.urls import path
 
 from .views import (
     CreateExpense,
+    CreateGroup,
     DeleteExpense,
     GroupSettings,
     UpdateExpense,
@@ -14,6 +15,7 @@ app_name = "groups"
 
 urlpatterns = [
     path("", groups_index, name="index"),
+    path("create/", CreateGroup.as_view(), name="create"),
     path("<int:group_id>/", group_home, name="group"),
     path("<int:group_id>/settings/", GroupSettings.as_view(), name="group_settings"),
     path(

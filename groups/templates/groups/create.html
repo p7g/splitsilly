@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Create group | {{ block.super }}{% endblock %}
+
+{% block head %}
+<style>
+.settings-form > .form-row:not(:first-child) {
+    margin: 1rem 0;
+}
+.settings-form input[type="checkbox"] {
+    float: left;
+    margin-right: 0.5rem;
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<h1>Create new group</h1>
+
+<form class="settings-form" action="" method="post">
+    {% csrf_token %}
+
+    <div class="form-row">
+        {{ form.non_field_errors }}
+    </div>
+
+    <div class="form-row">
+        {{ form.name.errors }}
+        {{ form.name.label_tag }}
+        {{ form.name }}
+    </div>
+
+    <div class="form-row">
+        <input type="submit" value="Save" />
+    </div>
+</form>
+{% endblock %}

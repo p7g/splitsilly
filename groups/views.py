@@ -1,5 +1,6 @@
 import calendar
 
+from django import forms
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import Http404
@@ -7,12 +8,13 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import CreateView, DeleteView, UpdateView
 
 from .api import (
+    add_expense_group_user,
     calculate_debts,
     calculate_expense_debts,
     simplify_debts,
     simplify_mutual_owing,
 )
-from .forms import ExpenseForm, ExpenseGroupSettingsForm, SettleUpForm
+from .forms import ExpenseForm, ExpenseGroupForm, ExpenseGroupSettingsForm, SettleUpForm
 from .models import Expense, ExpenseGroup
 from .templatetags.money import to_dollars
 
@@ -232,6 +234,19 @@ class DeleteExpense(DeleteView):
 
     def get_success_url(self):
         return self.object.group.get_absolute_url()
+
+
+class CreateGroup(LoginRequiredMixin, CreateView):
+    model = ExpenseGroup
+    form_class = ExpenseGroupForm
+    context_object_name = "group"
+    template_name = "groups/create.html"
+
+    def form_valid(self, form):
+        resp = super().form_valid(form)
+        assert self.object is not None
+        add_expense_group_user(self.object, self.request.user)
+        return resp
 
 
 class GroupSettings(LoginRequiredMixin, UpdateView):
