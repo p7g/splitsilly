@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <title>Join {{ invite.sender.username }} on Splitsilly</title>
+    </head>
+    <body>
+        <p><b>{{ invite.sender.username }}</b> invited you to join the <b>{{ invite.group.name }}</b> group on Splitsilly.</p>
+        <p>To accept this invitation, <a href="{{ invite.get_absolute_url }}">click here</a>.</p>
+    </body>
+</html>

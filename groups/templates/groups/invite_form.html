@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Add group members | {{ block.super }}{% endblock %}
+
+{% block head %}
+<style>
+.form-row label {
+    display: block;
+}
+.form-row:not(:last-child) {
+    margin-bottom: 1rem;
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<h1>Invite members to {{ group.name }}</h1>
+
+<form class="settings-form" action="" method="post">
+    {% csrf_token %}
+
+    <div class="form-row">
+        {{ form.non_field_errors }}
+    </div>
+
+    <div class="form-row">
+        <label>
+            {{ form.emails.label }}:
+            <br />
+            <small>{{ form.emails.help_text }}</small>
+        </label>
+        {{ form.emails.errors }}
+        {{ form.emails }}
+    </div>
+
+    <div class="form-row">
+        <input type="submit" value="Invite" />
+    </div>
+</form>
+{% endblock %}

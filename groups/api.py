@@ -5,11 +5,20 @@ from decimal import Decimal
 
 import sentry_sdk
 from ddtrace import tracer
+from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
 
 from identity.models import User
 
-from .models import Expense, ExpenseGroup, ExpenseGroupUser, ExpenseSplit
+from .models import (
+    Expense,
+    ExpenseGroup,
+    ExpenseGroupInvite,
+    ExpenseGroupUser,
+    ExpenseSplit,
+)
 from .templatetags.money import to_dollars
 
 # User: (shares, adjustment)
@@ -293,4 +302,24 @@ def update_settle_up(
         date,
         amount,
         {payee: (1, 0)},
+    )
+
+
+def send_group_invite(group: ExpenseGroup, sender: User, recipient_email: str):
+    invite = ExpenseGroupInvite.objects.create(
+        group=group, sender=sender, recipient=recipient_email
+    )
+
+    context = {
+        "invite": invite,
+    }
+    plaintext_message = render_to_string("email/group_invite.txt", context)
+    html_message = render_to_string("email/group_invite.html", context)
+
+    send_mail(
+        subject=f"{sender.username} invited you to {group.name} on Splitsilly",
+        message=plaintext_message,
+        from_email=settings.EMAIL_FROM_ADDRESS,
+        recipient_list=[recipient_email],
+        html_message=html_message,
     )

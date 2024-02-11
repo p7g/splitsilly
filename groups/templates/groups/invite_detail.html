@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Join {{ invite.group.name }} | {{ block.super }}{% endblock %}
+
+{% block head %}
+<style>
+</style>
+{% endblock %}
+
+{% block body %}
+<h1>Join {{ invite.group.name }}</h1>
+
+<p>In order to join {{ invite.group.name }}, you'll need to either <a href="{{ login_url }}">log in</a> or <a href="{{ signup_url }}">sign up</a>.</p>
+{% endblock %}

@@ -1,0 +1,1 @@
+{{ invite.sender.username }} invited you to join the {{ invite.group.name }} group on Splitsilly. To accept this invitation, visit the following URL: {{ invite.get_absolute_url }}

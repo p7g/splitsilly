@@ -2,6 +2,7 @@ import copy
 
 from django import forms
 from django.core.exceptions import ValidationError
+from django.core.validators import EmailValidator
 from django.db.models import Exists, OuterRef
 from django.utils import timezone
 
@@ -248,41 +249,37 @@ class ExpenseGroupSettingsForm(forms.ModelForm):
             "name": forms.TextInput,
         }
 
-    users = CommaSeparatedCharField()
-
-    def __init__(self, instance=None, initial=None, **kwargs):
-        initial = initial or {}
-
-        if instance:
-            initial.setdefault(
-                "users",
-                [
-                    gu.user.username
-                    for gu in instance.expensegroupuser_set.select_related(
-                        "user"
-                    ).order_by("created_at")
-                ],
-            )
-
-        super().__init__(instance=instance, initial=initial, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         self.fields["simplify_debts"].label_suffix = ""
 
-    def clean_users(self):
-        value = {
-            username.casefold(): username for username in self.cleaned_data["users"]
-        }
-        matching_users = User.objects.filter(
-            is_active=True, username__in=value.values()
-        )
-        missing = value.keys() - {u.username.casefold() for u in matching_users}
-        if missing:
-            raise ValidationError(
-                f"Unknown users: {', '.join(value[u] for u in missing)}"
-            )
-        return matching_users
 
-    def save(self, *args, **kwargs):
-        instance = super().save(*args, **kwargs)
-        sync_expense_group_users(instance, self.cleaned_data["users"])
-        return instance
+class EmailListValidator:
+    def __init__(self):
+        self.email_validator = EmailValidator()
+
+    def __call__(self, value):
+        assert isinstance(value, list)
+
+        if not value:
+            raise ValidationError(
+                "This field is required.", code="required", params={"value": value}
+            )
+        elif len(value) > 10:
+            raise ValidationError(
+                "Please enter 10 or fewer emails.",
+                code="max_length",
+                params={"value": value},
+            )
+
+        for email in value:
+            self.email_validator(email)
+
+
+class GroupInviteForm(forms.Form):
+    emails = CommaSeparatedCharField(
+        validators=[EmailValidator],
+        widget=forms.Textarea,
+        help_text="Enter as a comma-separated list.",
+    )

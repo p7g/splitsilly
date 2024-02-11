@@ -1,5 +1,8 @@
 import enum
+from urllib.parse import urljoin
+from uuid import uuid4
 
+from django.conf import settings
 from django.db import models
 from django.db.models import Exists, OuterRef
 from django.urls import reverse
@@ -128,3 +131,20 @@ class ExpenseSplit(models.Model):
             return f"{formatted_shares} + {adjustment}"
         else:
             return f"{formatted_shares} - {adjustment}"
+
+
+class ExpenseGroupInvite(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid4)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    group = models.ForeignKey(ExpenseGroup, on_delete=models.CASCADE)
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name="+")
+    recipient = models.EmailField()
+    consumed_by = models.ForeignKey(
+        User, on_delete=models.CASCADE, null=True, related_name="+"
+    )
+
+    def get_absolute_url(self):
+        return urljoin(
+            settings.ROOT_URL, reverse("groups:invite_detail", args=(str(self.id),))
+        )

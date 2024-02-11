@@ -1,21 +1,30 @@
 import calendar
 
+import yarl
 from django import forms
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.generic import CreateView, DeleteView, UpdateView
+from django.urls import reverse
+from django.views.generic import CreateView, DeleteView, FormView, UpdateView
 
 from .api import (
     add_expense_group_user,
     calculate_debts,
     calculate_expense_debts,
+    send_group_invite,
     simplify_debts,
     simplify_mutual_owing,
 )
-from .forms import ExpenseForm, ExpenseGroupForm, ExpenseGroupSettingsForm, SettleUpForm
-from .models import Expense, ExpenseGroup
+from .forms import (
+    ExpenseForm,
+    ExpenseGroupForm,
+    ExpenseGroupSettingsForm,
+    GroupInviteForm,
+    SettleUpForm,
+)
+from .models import Expense, ExpenseGroup, ExpenseGroupInvite
 from .templatetags.money import to_dollars
 
 
@@ -261,3 +270,90 @@ class GroupSettings(LoginRequiredMixin, UpdateView):
 
     def get_queryset(self):
         return super().get_queryset().for_user(self.request.user)
+
+    def get_context_data(self):
+        return {
+            **super().get_context_data(),
+            "pending_invites": self.object.expensegroupinvite_set.filter(
+                consumed_by=None
+            ),
+        }
+
+
+def get_valid_invite(invite_id):
+    return ExpenseGroupInvite.objects.get(invite_id=invite_id, consumed_by=None)
+
+
+def invite_detail_view(request, invite_id):
+    if request.user.is_authenticated:
+        return redirect(request, "groups:consume_invite", invite_id=invite_id)
+
+    invite = get_valid_invite(invite_id)
+    if not invite:
+        return render(request, "groups/invite_invalid.html")
+
+    context = {
+        "invite": invite,
+        "login_url": yarl.URL(reverse("identity:login")).with_query(next=request.path),
+        "signup_url": yarl.URL(reverse("identity:signup")).with_query(
+            invite_id=invite_id
+        ),
+    }
+    return render(request, "groups/invite_detail.html", context)
+
+
+@login_required
+def consume_invite_view(request, invite_id):
+    invite = get_valid_invite(invite_id)
+    if not invite:
+        return render(request, "groups/invite_invalid.html")
+
+    # FIXME: race condition
+    add_expense_group_user(invite.group, request.user)
+    invite.consumed_by = request.user
+    invite.save(update_fields=["updated_at", "consumed_by"])
+
+    return redirect(invite.group)
+
+
+class GroupInviteView(LoginRequiredMixin, FormView):
+    form_class = GroupInviteForm
+    template_name = "groups/invite_form.html"
+
+    def _get_group(self):
+        return get_object_or_404(
+            ExpenseGroup.objects.for_user(self.request.user).filter(
+                id=self.request.resolver_match.kwargs["group_id"]
+            )
+        )
+
+    def get(self, request, *args, **kwargs):
+        # This will 404 if the user doesn't have access to the group
+        self._get_group()
+        return super().get(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        # This will 404 if the user doesn't have access to the group
+        self._get_group()
+        return super().post(request, *args, **kwargs)
+
+    def get_initial(self):
+        return {
+            **super().get_initial(),
+            "emails": [],
+        }
+
+    def get_context_data(self):
+        return {
+            **super().get_context_data(),
+            "group": self._get_group(),
+        }
+
+    def form_valid(self, form):
+        emails = form.cleaned_data["emails"]
+        group = self._get_group()
+
+        for email in emails:
+            send_group_invite(group, self.request.user, email)
+
+        return redirect("groups:group_settings", group_id=group.id)

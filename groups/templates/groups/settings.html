@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Group settings | Splitsilly{% endblock %}
+{% block title %}Group settings | {{ block.super }}{% endblock %}
 
 {% block head %}
 <style>
@@ -35,6 +35,30 @@
         {{ form.simplify_debts }}
         {{ form.simplify_debts.label_tag }}
     </div>
+
+    <table width="100%">
+        <caption>Group members (<a href="{% url 'groups:invite' group.id %}">invite</a>)</caption>
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for invite in pending_invites %}
+                <tr>
+                    <td>{{ invite.recipient }} (pending)</td>
+                    <td></td>
+                </tr>
+            {% endfor %}
+            {% for expensegroupuser in group.expensegroupuser_set.all %}
+                <tr>
+                    <td>{{ expensegroupuser.user.username }}</td>
+                    <td></td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 
     <div class="form-row">
         {{ form.users.errors }}

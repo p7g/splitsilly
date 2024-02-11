@@ -30,6 +30,7 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 DEBUG = ENV == "dev"
 
 ALLOWED_HOSTS = [os.getenv("DJANGO_HOST")]
+ROOT_URL = os.getenv("ROOT_URL")
 
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
