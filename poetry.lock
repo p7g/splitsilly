@@ -375,6 +375,21 @@ files = [
 Django = ">=3.2"
 
 [[package]]
+name = "django-timezone-field"
+version = "6.1.0"
+description = "A Django app providing DB, form, and REST framework fields for zoneinfo and pytz timezone objects."
+category = "main"
+optional = false
+python-versions = ">=3.8,<4.0"
+files = [
+    {file = "django_timezone_field-6.1.0-py3-none-any.whl", hash = "sha256:0095f43da716552fcc606783cfb42cb025892514f1ec660ebfa96186eb83b74c"},
+    {file = "django_timezone_field-6.1.0.tar.gz", hash = "sha256:d40f7059d7bae4075725d04a9dae601af9fe3c7f0119a69b0e2c6194a782f797"},
+]
+
+[package.dependencies]
+Django = ">=3.2,<6.0"
+
+[[package]]
 name = "envier"
 version = "0.5.1"
 description = "Python application configuration via the environment"
@@ -1236,4 +1251,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "c5760af55a205e75fef99c7f636df3f9de8441199dc3958c2bc775f2d9c754fa"
+content-hash = "9bbe82eb4584b283469282a9dee1a3695ec4842f84690fb7396917e44b5fec43"

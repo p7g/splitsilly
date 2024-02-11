@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractUser
 from django.core.mail import send_mail
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from timezone_field import TimeZoneField
 
 
 class User(AbstractUser):
@@ -20,6 +21,7 @@ class User(AbstractUser):
         },
     )
     email = models.EmailField()
+    timezone = TimeZoneField(default="America/Toronto")
 
     def send_email(self, subject, body):
         return 1 == send_mail(
