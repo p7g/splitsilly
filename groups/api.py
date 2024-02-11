@@ -150,7 +150,6 @@ def money_to_float(value: int) -> float:
     return float(value) / 100
 
 
-@tracer.wrap()
 def calculate_expense_debts(expense: Expense) -> dict[User, int]:
     debts = _calculate_expense_debts(expense)
     return {user: amount for user, amount in debts.items() if amount}
