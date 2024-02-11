@@ -43,7 +43,9 @@ def group_home(request, group_id: int):
         debts = simplify_mutual_owing(debts)
 
     expenses_by_year_month = []
-    for expense in group.expense_set.order_by("-date", "-created_at"):
+    for expense in group.expense_set.prefetch_related("payer").order_by(
+        "-date", "-created_at"
+    ):
         y_mo = (expense.date.year, calendar.month_name[expense.date.month])
         if not expenses_by_year_month or y_mo != expenses_by_year_month[-1][:2]:
             expenses_by_year_month.append((*y_mo, []))
