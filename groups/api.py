@@ -126,9 +126,7 @@ def update_expense(
 def calculate_debts(group: ExpenseGroup) -> Debts:
     debts = {}
 
-    for expense in group.expense_set.prefetch_related(
-        "payer", "expensesplit_set__user"
-    ):
+    for expense in group.expense_set.all():
         expense_debts = calculate_expense_debts(expense)
         for borrower, debt in expense_debts.items():
             if borrower == expense.payer:
@@ -159,7 +157,7 @@ def calculate_expense_debts(expense: Expense) -> dict[User, int]:
 
 
 def _calculate_expense_debts(expense: Expense) -> dict[User, int]:
-    splits = expense.expensesplit_set.select_related("user").all()
+    splits = expense.expensesplit_set.all()
 
     if expense.type == Expense.Type.EXACT:
         return {split.user: split.shares + split.adjustment for split in splits}
