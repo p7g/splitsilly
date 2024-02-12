@@ -281,7 +281,7 @@ class GroupSettings(LoginRequiredMixin, UpdateView):
 
 
 def get_valid_invite(invite_id):
-    return ExpenseGroupInvite.objects.get(invite_id=invite_id, consumed_by=None)
+    return ExpenseGroupInvite.objects.get(id=invite_id, consumed_by=None)
 
 
 def invite_detail_view(request, invite_id):
