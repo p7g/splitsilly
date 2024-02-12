@@ -309,7 +309,8 @@ def consume_invite_view(request, invite_id):
         return render(request, "groups/invite_invalid.html")
 
     # FIXME: race condition
-    add_expense_group_user(invite.group, request.user)
+    if not invite.group.expensegroupuser_set.filter(user=request.user).exists():
+        add_expense_group_user(invite.group, request.user)
     invite.consumed_by = request.user
     invite.save(update_fields=["updated_at", "consumed_by"])
 
