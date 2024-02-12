@@ -1,0 +1,5 @@
+#!/bin/sh
+
+version="$(git rev-parse HEAD)"
+
+VERSION=$version DD_VERSION="$version" ddtrace-run gunicorn -b 127.0.0.1:8001 splitsilly.wsgi
