@@ -286,7 +286,7 @@ def get_valid_invite(invite_id):
 
 def invite_detail_view(request, invite_id):
     if request.user.is_authenticated:
-        return redirect(request, "groups:consume_invite", invite_id=invite_id)
+        return redirect("groups:consume_invite", invite_id=invite_id)
 
     invite = get_valid_invite(invite_id)
     if not invite:
