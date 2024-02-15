@@ -296,7 +296,7 @@ def invite_detail_view(request, invite_id):
         "invite": invite,
         "login_url": yarl.URL(reverse("identity:login")).with_query(next=request.path),
         "signup_url": yarl.URL(reverse("identity:signup")).with_query(
-            invite_id=invite_id
+            invite_id=str(invite_id)
         ),
     }
     return render(request, "groups/invite_detail.html", context)
