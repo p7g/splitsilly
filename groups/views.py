@@ -1,7 +1,6 @@
 import calendar
 
 import yarl
-from django import forms
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import Http404
@@ -25,7 +24,7 @@ from .forms import (
     SettleUpForm,
 )
 from .models import Expense, ExpenseGroup, ExpenseGroupInvite
-from .templatetags.money import to_dollars
+from .tasks import send_expense_added_emails, send_expense_updated_emails
 
 
 @login_required
@@ -171,27 +170,7 @@ class CreateExpense(ExpenseFormViewMixin, CreateView):
         # Email everyone except the creator
         expense = self.object
         assert isinstance(expense, Expense)
-        debts = calculate_expense_debts(expense)
-
-        for user, amount_owed in debts.items():
-            if user == self.request.user:
-                continue
-            if expense.is_settle_up:
-                user.send_email(
-                    f"{expense.payer.username} settled up with you",
-                    f"They paid you {to_dollars(-amount_owed)}.",
-                )
-            elif user == expense.payer:
-                user.send_email(
-                    f"{self.request.user.username} added a new expense in {expense.group.name}",
-                    f"You paid {to_dollars(expense.amount)} for {expense.name} on {expense.date.isoformat()}. "
-                    f"You are owed {to_dollars(expense.amount - amount_owed)}.",
-                )
-            else:
-                user.send_email(
-                    f"{self.request.user.username} added a new expense in {expense.group.name}",
-                    f"You owe {to_dollars(amount_owed)} to {expense.payer.username} for {expense.name} on {expense.date.isoformat()}.",
-                )
+        send_expense_added_emails(expense.id, self.request.user.id)
 
         return result
 
@@ -211,27 +190,7 @@ class UpdateExpense(ExpenseFormViewMixin, UpdateView):
         # Email everyone except the creator
         expense = self.object
         assert isinstance(expense, Expense)
-        debts = calculate_expense_debts(expense)
-
-        for user, amount_owed in debts.items():
-            if user == self.request.user:
-                continue
-            if expense.is_settle_up:
-                user.send_email(
-                    f"{expense.payer.username} updated their settle up with you",
-                    f"They now paid you {to_dollars(amount_owed)}.",
-                )
-            elif user == expense.payer:
-                user.send_email(
-                    f"{self.request.user.username} updated an expense in {expense.group.name}",
-                    f"You paid {to_dollars(expense.amount)} for {expense.name} on {expense.date.isoformat()}. "
-                    f"You are now owed {to_dollars(expense.amount - amount_owed)}.",
-                )
-            else:
-                user.send_email(
-                    f"{self.request.user.username} updated an expense in {expense.group.name}",
-                    f"You now owe {to_dollars(amount_owed)} to {expense.payer.username} for {expense.name} on {expense.date.isoformat()}",
-                )
+        send_expense_updated_emails(expense.id, self.request.user.id)
 
         return result
 

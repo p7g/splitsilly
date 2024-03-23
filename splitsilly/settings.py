@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "huey.contrib.djhuey",
     "groups",
     "django_extensions",
     "identity",
@@ -153,3 +154,15 @@ EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 EMAIL_USE_SSL = True
 EMAIL_FROM_ADDRESS = os.getenv("EMAIL_FROM_ADDRESS")
+
+HUEY = {
+    "huey_class": "huey.SqliteHuey",
+    "filename": BASE_DIR / "huey.sqlite3",
+    "results": False,
+    "immediate": False,
+    "utc": True,
+    "consumer": {
+        "workers": 1,
+        "worker_type": "thread",
+    },
+}

@@ -305,21 +305,10 @@ def update_settle_up(
     )
 
 
-def send_group_invite(group: ExpenseGroup, sender: User, recipient_email: str):
+def send_group_invite(group: ExpenseGroup, sender: User, recipient_email: str) -> None:
+    from .tasks import send_group_invite_email
+
     invite = ExpenseGroupInvite.objects.create(
         group=group, sender=sender, recipient=recipient_email
     )
-
-    context = {
-        "invite": invite,
-    }
-    plaintext_message = render_to_string("email/group_invite.txt", context)
-    html_message = render_to_string("email/group_invite.html", context)
-
-    send_mail(
-        subject=f"{sender.username} invited you to {group.name} on Splitsilly",
-        message=plaintext_message,
-        from_email=settings.EMAIL_FROM_ADDRESS,
-        recipient_list=[recipient_email],
-        html_message=html_message,
-    )
+    send_group_invite_email(invite.id)

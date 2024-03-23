@@ -16,6 +16,7 @@ sentry-sdk = {extras = ["django"], version = "^1.40.0"}
 ddtrace = "^2.6.0"
 django-timezone-field = "^6.1.0"
 yarl = "^1.9.4"
+huey = "^2.5.0"
 
 
 [tool.poetry.group.dev.dependencies]
