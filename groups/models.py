@@ -127,7 +127,7 @@ class ExpenseSplit(models.Model):
             return formatted_shares
 
         adjustment = to_dollars(abs(self.adjustment))
-        if self.shares > 0:
+        if self.adjustment > 0:
             return f"{formatted_shares} + {adjustment}"
         else:
             return f"{formatted_shares} - {adjustment}"
