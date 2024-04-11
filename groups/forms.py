@@ -31,7 +31,7 @@ class MoneyField(forms.DecimalField):
     widget = forms.NumberInput(attrs={"type": "number"})
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs, decimal_places=2, min_value=0)
+        super().__init__(*args, **kwargs, decimal_places=2)
 
     def clean(self, value):
         return float_to_money(super().clean(value))
@@ -80,7 +80,7 @@ class ExpenseForm(forms.ModelForm):
 
     name = forms.CharField()
     payer = forms.ModelChoiceField(queryset=User.objects.none())
-    amount = MoneyField()
+    amount = MoneyField(min_value=0)
 
     def __init__(self, *, group: ExpenseGroup, **kwargs):
         self._group = group
@@ -165,7 +165,7 @@ class SettleUpForm(forms.ModelForm):
 
     payer = forms.ModelChoiceField(queryset=User.objects.none())
     payee = forms.ModelChoiceField(queryset=User.objects.none())
-    amount = MoneyField()
+    amount = MoneyField(min_value=0)
 
     def __init__(self, *, group: ExpenseGroup, **kwargs):
         self._group = group
