@@ -5,3 +5,4 @@ _env
 *.sqlite3-wal
 .env
 static
+.idea

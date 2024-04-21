@@ -47,7 +47,7 @@ class SplitWidget(forms.MultiWidget):
     def __init__(self):
         super().__init__(
             {
-                "split": forms.NumberInput(attrs={"type": "number", "step": "any"}),
+                "split": forms.NumberInput(attrs={"type": "text", "step": "any"}),
                 "adjustment": copy.deepcopy(MoneyField().widget),
             }
         )
