@@ -96,6 +96,7 @@ legend + .form-row.form-row {
                 {{ field }}
             </div>
         {% endfor %}
+        <button id="evalButton" hidden="hidden" type="button">Evil</button>
     </fieldset>
 
     <div class="form-row">
@@ -162,10 +163,22 @@ function applySplitEqually() {
     }
 }
 
+function runEval() {
+    splitFields.forEach(field => field.value = field.value ? eval(field.value) : "");
+}
+
+function updateEvalButtonShow() {
+    const showButton = splitFields.some(field => isNaN(field.value));
+    evalButton.hidden = !showButton;
+}
+
 typeField.addEventListener("change", updateRemaining);
 typeField.addEventListener("change", hideAdjustmentsForExact);
 amountField.addEventListener("input", updateRemaining);
 splitFields.forEach(field => field.addEventListener("input", updateRemaining));
+
+splitFields.forEach(field => field.addEventListener("input", updateEvalButtonShow));
+evalButton.onclick = runEval;
 
 toggleAdjustments.checked = splitFields.some(field => field.name.endsWith("_adjustment") && parseFloat(field.value || 0) !== 0);
 toggleAdjustments.addEventListener("change", hideAdjustmentsForExact);
