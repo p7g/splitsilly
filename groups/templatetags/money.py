@@ -4,10 +4,10 @@ register = template.Library()
 
 
 @register.filter
-def to_dollars(value: int) -> str:
+def to_dollars(value: int, currency_symbol: str = "$") -> str:
     assert isinstance(value, int)
 
     dollars = value // 100
     cents = value % 100
 
-    return f"${dollars}.{cents:02d}"
+    return f"{currency_symbol}{dollars}.{cents:02d}"

@@ -11,7 +11,7 @@
 
 <h2>Debts</h2>
 
-<p>{{ expense.payer }} paid {{ expense.amount|to_dollars }} for {{ expense.name }} on {{ expense.date.isoformat }}.</p>
+<p>{{ expense.payer }} paid {{ expense.amount|to_dollars:expense.currency_symbol }} for {{ expense.name }} on {{ expense.date.isoformat }}.</p>
 <ul>
     {% for user, amount in debts.items %}
     <li>{{ user }} owes {{ amount|to_dollars }}</li>

@@ -85,6 +85,7 @@ class Expense(models.Model):
     type = models.IntegerField(choices=EXPENSE_TYPE_CHOICES)
     is_settle_up = models.BooleanField(default=False)
     exchange_rate = models.DecimalField(max_digits=20, decimal_places=10, default=1)
+    currency_symbol = models.TextField(default="$")
 
     objects = models.Manager.from_queryset(ExpenseQuerySet)()
 
@@ -116,7 +117,9 @@ class ExpenseSplit(models.Model):
     @property
     def formatted_shares(self) -> str:
         if self.expense.type == Expense.Type.EXACT:
-            return to_dollars(self.shares + self.adjustment)
+            return to_dollars(
+                self.shares + self.adjustment, self.expense.currency_symbol
+            )
         elif self.expense.type == Expense.Type.PERCENTAGE:
             formatted_shares = f"{self.shares}%"
         elif self.expense.type == Expense.Type.SHARES:
@@ -127,7 +130,7 @@ class ExpenseSplit(models.Model):
         if not self.adjustment:
             return formatted_shares
 
-        adjustment = to_dollars(abs(self.adjustment))
+        adjustment = to_dollars(abs(self.adjustment), self.expense.currency_symbol)
         if self.adjustment > 0:
             return f"{formatted_shares} + {adjustment}"
         else:

@@ -76,6 +76,7 @@ def create_expense(
     amount: int,
     split: Split,
     exchange_rate: Decimal,
+    currency_symbol: str,
     _is_settle_up: bool = False,
 ) -> Expense:
     validate_expense_split(type_, amount, split)
@@ -87,6 +88,7 @@ def create_expense(
         date=date,
         amount=amount,
         exchange_rate=exchange_rate,
+        currency_symbol=currency_symbol,
         is_settle_up=_is_settle_up,
     )
 
@@ -107,6 +109,7 @@ def update_expense(
     amount: int,
     split: Split,
     exchange_rate: Decimal,
+    currency_symbol: str,
 ) -> None:
     expense.name = name
     expense.type = type_
@@ -114,6 +117,7 @@ def update_expense(
     expense.date = date
     expense.amount = amount
     expense.exchange_rate = exchange_rate
+    expense.currency_symbol = currency_symbol
     expense.save()
 
     old_split = {

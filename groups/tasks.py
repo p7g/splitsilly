@@ -48,7 +48,7 @@ def send_expense_added_emails(expense_id: int, actor_user_id: int) -> None:
         elif user == expense.payer:
             user.send_email(
                 f"{actor.username} added a new expense in {expense.group.name}",
-                f"You paid {to_dollars(expense.amount)} for {expense.name} on {expense.date.isoformat()}. "
+                f"You paid {to_dollars(expense.amount, expense.currency_symbol)} for {expense.name} on {expense.date.isoformat()}. "
                 f"You are owed {to_dollars(expense.amount - amount_owed)}.",
             )
         else:
@@ -75,7 +75,7 @@ def send_expense_updated_emails(expense_id: int, actor_user_id: int) -> None:
         elif user == expense.payer:
             user.send_email(
                 f"{actor.username} updated an expense in {expense.group.name}",
-                f"You paid {to_dollars(expense.amount)} for {expense.name} on {expense.date.isoformat()}. "
+                f"You paid {to_dollars(expense.amount, expense.currency_symbol)} for {expense.name} on {expense.date.isoformat()}. "
                 f"You are now owed {to_dollars(expense.amount - amount_owed)}.",
             )
         else:

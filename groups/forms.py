@@ -81,6 +81,7 @@ class ExpenseForm(forms.ModelForm):
     name = forms.CharField()
     payer = forms.ModelChoiceField(queryset=User.objects.none())
     amount = MoneyField(min_value=0)
+    currency_symbol = forms.CharField(max_length=5, required=True, initial="$")
 
     def __init__(self, *, group: ExpenseGroup, **kwargs):
         self._group = group
@@ -147,6 +148,7 @@ class ExpenseForm(forms.ModelForm):
             "amount": self.cleaned_data["amount"],
             "split": self.cleaned_data["split"],
             "exchange_rate": self.cleaned_data["exchange_rate"],
+            "currency_symbol": self.cleaned_data["currency_symbol"],
         }
 
         if self.instance.pk:
