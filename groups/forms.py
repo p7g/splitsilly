@@ -73,7 +73,7 @@ class SplitField(forms.MultiValueField):
 class ExpenseForm(forms.ModelForm):
     class Meta:
         model = Expense
-        fields = ("group", "date", "type", "name", "payer", "amount")
+        fields = ("group", "date", "type", "name", "payer", "amount", "exchange_rate")
         widgets = {
             "date": forms.DateInput(attrs={"type": "date"}),
         }
@@ -146,6 +146,7 @@ class ExpenseForm(forms.ModelForm):
             "date": self.cleaned_data["date"],
             "amount": self.cleaned_data["amount"],
             "split": self.cleaned_data["split"],
+            "exchange_rate": self.cleaned_data["exchange_rate"],
         }
 
         if self.instance.pk:

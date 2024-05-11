@@ -84,6 +84,7 @@ class Expense(models.Model):
     payer = models.ForeignKey(User, on_delete=models.CASCADE)
     type = models.IntegerField(choices=EXPENSE_TYPE_CHOICES)
     is_settle_up = models.BooleanField(default=False)
+    exchange_rate = models.DecimalField(max_digits=20, decimal_places=10, default=1)
 
     objects = models.Manager.from_queryset(ExpenseQuerySet)()
 

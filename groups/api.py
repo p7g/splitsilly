@@ -75,6 +75,7 @@ def create_expense(
     date: date,
     amount: int,
     split: Split,
+    exchange_rate: Decimal,
     _is_settle_up: bool = False,
 ) -> Expense:
     validate_expense_split(type_, amount, split)
@@ -85,6 +86,7 @@ def create_expense(
         payer=payer,
         date=date,
         amount=amount,
+        exchange_rate=exchange_rate,
         is_settle_up=_is_settle_up,
     )
 
@@ -104,12 +106,14 @@ def update_expense(
     date: date,
     amount: int,
     split: Split,
+    exchange_rate: Decimal,
 ) -> None:
     expense.name = name
     expense.type = type_
     expense.payer = payer
     expense.date = date
     expense.amount = amount
+    expense.exchange_rate = exchange_rate
     expense.save()
 
     old_split = {
@@ -160,7 +164,9 @@ def money_to_float(value: int) -> float:
 
 
 def calculate_expense_debts(expense: Expense) -> dict[User, int]:
-    debts = _calculate_expense_debts(expense)
+    debts = _apply_exchange_rate(
+        _calculate_expense_debts(expense), expense.exchange_rate
+    )
     return {user: amount for user, amount in debts.items() if amount}
 
 
@@ -181,6 +187,10 @@ def _calculate_expense_debts(expense: Expense) -> dict[User, int]:
     else:
         raise NotImplementedError(expense.type)
     return {split.user: debt[split.user] + split.adjustment for split in splits}
+
+
+def _apply_exchange_rate(debts: Debts, exchange_rate: Decimal) -> Debts:
+    return {user: int(amount * exchange_rate) for user, amount in debts.items()}
 
 
 @tracer.wrap()
