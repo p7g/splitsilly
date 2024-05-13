@@ -96,6 +96,7 @@ class ExpenseForm(forms.ModelForm):
         instance = kwargs.get("instance")
         if instance:
             initial["amount"] = money_to_float(instance.amount)
+            initial["currency_symbol"] = instance.currency_symbol
 
             for split in instance.expensesplit_set.select_related("user"):
                 shares = split.shares
