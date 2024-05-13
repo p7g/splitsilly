@@ -62,7 +62,7 @@
             <tr>
                 <td>{{ expense.date.isoformat }}</td>
                 <td><a href="{{ expense.get_absolute_url }}">{{ expense.name }}</a></td>
-                <td>{{ expense.amount|to_dollars }}</td>
+                <td>{{ expense.amount|to_dollars:expense.currency_symbol }}</td>
                 <td>{{ expense.payer }}</td>
             </tr>
             {% endfor %}

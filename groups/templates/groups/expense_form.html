@@ -117,6 +117,7 @@ legend + .form-row.form-row {
 const form = expenseForm;
 const typeField = form.type;
 const amountField = form.elements.amount;
+const currencySymbolField = form.elements.currency_symbol;
 const splitFields = [...form.elements].filter(el => el.name.startsWith("split_"));
 const EXACT = "1",
     PERCENTAGE = "2",
@@ -134,11 +135,12 @@ function updateRemaining() {
         splitFieldset.prepend(el);
     }
 
-    const isDollars = typeField.value === EXACT;
+    const isExact = typeField.value === EXACT;
 
-    if (isDollars) {
+    if (isExact) {
+        const currencySymbol = currencySymbolField.value || "$";
         const remaining = parseFloat(amountField.value || 0) - splitFields.reduce((acc, el) => acc + parseFloat(el.value || 0), 0);
-        el.innerText = `$${remaining.toFixed(2)} remaining`;
+        el.innerText = `${currencySymbol}${remaining.toFixed(2)} remaining`;
     } else {
         const remaining = 100 - splitFields.reduce((acc, el) => acc + Math.floor(parseFloat(el.value || 0)), 0);
         el.innerText = `${remaining}% remaining`;
