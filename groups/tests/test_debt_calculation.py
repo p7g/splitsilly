@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 
 import pytest
 
@@ -23,6 +24,8 @@ def test_exact_split(expensegroup_with_users, users):
             b: (25, 0),
             c: (25, 0),
         },
+        exchange_rate=Decimal(1),
+        currency_symbol="$",
     )
 
     assert api.calculate_expense_debts(expense) == {
@@ -47,6 +50,8 @@ def test_percentage_split(expensegroup_with_users, users):
             b: (25, 0),
             c: (25, 0),
         },
+        exchange_rate=Decimal(1),
+        currency_symbol="$",
     )
 
     assert api.calculate_expense_debts(expense) == {
@@ -71,6 +76,8 @@ def test_shares_split(expensegroup_with_users, users):
             b: (1, 0),
             c: (1, 0),
         },
+        exchange_rate=Decimal(1),
+        currency_symbol="$",
     )
 
     assert api.calculate_expense_debts(expense) == {
@@ -91,6 +98,8 @@ def test_shares_split(expensegroup_with_users, users):
             b: (1, 0),
             c: (1, 0),
         },
+        exchange_rate=Decimal(1),
+        currency_symbol="$",
     )
 
     assert api.calculate_expense_debts(expense) == {
@@ -112,6 +121,8 @@ def test_shares_split(expensegroup_with_users, users):
             b: (2, 0),
             c: (1, 0),
         },
+        exchange_rate=Decimal(1),
+        currency_symbol="$",
     )
 
     assert api.calculate_expense_debts(expense) == {
@@ -137,6 +148,8 @@ def test_adjustment_split(expensegroup_with_users, users):
             b: (1, -2),
             c: (1, 5),
         },
+        exchange_rate=Decimal(1),
+        currency_symbol="$",
     )
 
     assert api.calculate_expense_debts(expense) == {
@@ -163,6 +176,8 @@ def test_group_expenses(expensegroup_with_users, users):
             b: (25, 0),
             c: (25, 0),
         },
+        exchange_rate=Decimal(1),
+        currency_symbol="$",
     )
     api.create_expense(
         expensegroup_with_users,
@@ -176,6 +191,8 @@ def test_group_expenses(expensegroup_with_users, users):
             b: (1, 0),
             c: (1, 0),
         },
+        exchange_rate=Decimal(1),
+        currency_symbol="$",
     )
     api.create_expense(
         expensegroup_with_users,
@@ -189,6 +206,8 @@ def test_group_expenses(expensegroup_with_users, users):
             b: (1, -2),
             c: (1, 5),
         },
+        exchange_rate=Decimal(1),
+        currency_symbol="$",
     )
 
     assert api.calculate_debts(expensegroup_with_users) == {
