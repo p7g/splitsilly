@@ -1,4 +1,5 @@
 import copy
+from decimal import Decimal
 
 from django import forms
 from django.core.exceptions import ValidationError
@@ -7,6 +8,7 @@ from django.db.models import Exists, OuterRef
 from django.utils import timezone
 
 from identity.models import User
+from splitsilly.utils import expr
 
 from .api import (
     create_expense,
@@ -61,7 +63,7 @@ class SplitField(forms.MultiValueField):
 
     def __init__(self, **kwargs):
         fields = (
-            forms.DecimalField(initial=0),
+            forms.CharField(initial="0"),
             MoneyField(initial=0),
         )
         super().__init__(fields=fields, **kwargs)
@@ -99,11 +101,11 @@ class ExpenseForm(forms.ModelForm):
             initial["currency_symbol"] = instance.currency_symbol
 
             for split in instance.expensesplit_set.select_related("user"):
-                shares = split.shares
-                if shares_are_money(instance.type):
-                    shares = money_to_float(shares)
                 adjustment = money_to_float(split.adjustment)
-                initial[f"split_{split.user.username}"] = (shares, adjustment)
+                initial[f"split_{split.user.username}"] = (
+                    split.shares_expr,
+                    adjustment,
+                )
         else:
             initial.setdefault("date", timezone.now().date())
 
@@ -115,7 +117,7 @@ class ExpenseForm(forms.ModelForm):
 
         self.split_fields = []
         for user in users:
-            field = SplitField(label=user.username, initial=(0, 0))
+            field = SplitField(label=user.username, initial=("0", 0))
             field_key = f"split_{user.username}"
             self.fields[field_key] = field
             self.split_fields.append(self[field_key])
@@ -124,16 +126,23 @@ class ExpenseForm(forms.ModelForm):
         super().clean()
 
         split_by_user = {}
+        evaled_split_by_user = {}
         for user in self._users:
             shares, adjustment = self.cleaned_data[f"split_{user.username}"]
+            try:
+                evaled_shares = expr.evaluate(shares)
+            except Exception as e:
+                self.add_error(f"split_{user.username}", str(e))
+                evaled_shares = Decimal(0)
             if shares_are_money(self.cleaned_data["type"]):
-                shares = float_to_money(shares)
+                evaled_shares = float_to_money(evaled_shares)
             else:
-                shares = int(shares)
+                evaled_shares = int(evaled_shares)
+            evaled_split_by_user[user] = (shares, evaled_shares, adjustment)
             split_by_user[user] = (shares, adjustment)
 
         validate_expense_split(
-            self.cleaned_data["type"], self.cleaned_data["amount"], split_by_user
+            self.cleaned_data["type"], self.cleaned_data["amount"], evaled_split_by_user
         )
         self.cleaned_data["split"] = split_by_user
 

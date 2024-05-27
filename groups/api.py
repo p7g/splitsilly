@@ -11,6 +11,7 @@ from django.core.mail import send_mail
 from django.template.loader import render_to_string
 
 from identity.models import User
+from splitsilly.utils import expr
 
 from .models import (
     Expense,
@@ -22,7 +23,9 @@ from .models import (
 from .templatetags.money import to_dollars
 
 # User: (shares, adjustment)
-Split = dict[User, tuple[int, int]]
+RawSplit = dict[User, tuple[str, int]]
+# User: (raw_shares, shares, adjustment)
+Split = dict[User, tuple[str, int, int]]
 Debts = dict[tuple[User, User], int]
 
 
@@ -49,21 +52,36 @@ def sync_expense_group_users(group: ExpenseGroup, users: Sequence[User]) -> None
     )
 
 
+def evaluate_split_shares(type_: Expense.Type, shares: str) -> int:
+    evaled_shares = expr.evaluate(shares)
+    if shares_are_money(type_):
+        return float_to_money(evaled_shares)
+    else:
+        return int(evaled_shares)
+
+
+def evaluate_split(type_: Expense.Type, split: RawSplit) -> Split:
+    result = {}
+    for user, (shares, adjustment) in split.items():
+        result[user] = (shares, evaluate_split_shares(type_, shares), adjustment)
+    return result
+
+
 def validate_expense_split(type_: Expense.Type, amount: int, split: Split):
     if type_ == Expense.Type.EXACT:
-        total = sum(shares + adjustment for shares, adjustment in split.values())
+        total = sum(shares + adjustment for _, shares, adjustment in split.values())
         if amount != total:
             raise ValidationError(
                 f"Split must add to {to_dollars(amount)}, got {to_dollars(total)}"
             )
     elif type_ == Expense.Type.PERCENTAGE:
-        total = sum(shares for shares, _adjustment in split.values())
+        total = sum(shares for _, shares, _adjustment in split.values())
         if total != 100:
             raise ValidationError(f"Split percentages must add to 100, got {total}")
     elif type_ == Expense.Type.SHARES:
-        if all(shares == 0 for shares, _adjustment in split.values()):
+        if all(shares == 0 for _, shares, _adjustment in split.values()):
             raise ValidationError("The total number of shares must be at least 1")
-        if any(shares < 0 for shares, _adjustment in split.values()):
+        if any(shares < 0 for _, shares, _adjustment in split.values()):
             raise ValidationError("Shares must be positive of zero")
 
 
@@ -74,12 +92,13 @@ def create_expense(
     payer: User,
     date: date,
     amount: int,
-    split: Split,
+    split: RawSplit,
     exchange_rate: Decimal,
     currency_symbol: str,
     _is_settle_up: bool = False,
 ) -> Expense:
-    validate_expense_split(type_, amount, split)
+    evaled_split = evaluate_split(type_, split)
+    validate_expense_split(type_, amount, evaled_split)
     expense = Expense.objects.create(
         group=group,
         name=name,
@@ -93,8 +112,14 @@ def create_expense(
     )
 
     ExpenseSplit.objects.bulk_create(
-        ExpenseSplit(expense=expense, user=user, shares=shares, adjustment=adjustment)
-        for user, (shares, adjustment) in split.items()
+        ExpenseSplit(
+            expense=expense,
+            user=user,
+            shares_expr=raw_shares,
+            shares=shares,
+            adjustment=adjustment,
+        )
+        for user, (raw_shares, shares, adjustment) in evaled_split.items()
     )
 
     return expense
@@ -107,10 +132,13 @@ def update_expense(
     payer: User,
     date: date,
     amount: int,
-    split: Split,
+    split: RawSplit,
     exchange_rate: Decimal,
     currency_symbol: str,
 ) -> None:
+    evaled_split = evaluate_split(type_, split)
+    validate_expense_split(type_, amount, evaled_split)
+
     expense.name = name
     expense.type = type_
     expense.payer = payer
@@ -120,22 +148,31 @@ def update_expense(
     expense.currency_symbol = currency_symbol
     expense.save()
 
-    old_split = {
-        split.user: (split.shares, split.adjustment)
-        for split in expense.expensesplit_set.select_related("user")
+    old_split_participants = {
+        split.user for split in expense.expensesplit_set.select_related("user")
     }
-    expense.expensesplit_set.filter(user__in=old_split.keys() - split.keys()).delete()
+    expense.expensesplit_set.filter(
+        user__in=old_split_participants - split.keys()
+    ).delete()
     existing_splits = expense.expensesplit_set.all()
     for existing_split in existing_splits:
-        existing_split.shares, existing_split.adjustment = split[existing_split.user]
+        (
+            existing_split.shares_expr,
+            existing_split.shares,
+            existing_split.adjustment,
+        ) = evaled_split[existing_split.user]
     ExpenseSplit.objects.bulk_update(
         existing_splits, ["adjustment", "shares", "updated_at"]
     )
     ExpenseSplit.objects.bulk_create(
         ExpenseSplit(
-            expense=expense, user=user, shares=split[user][0], adjustment=split[user][1]
+            expense=expense,
+            user=user,
+            shares_expr=evaled_split[user][0],
+            shares=evaled_split[user][1],
+            adjustment=evaled_split[user][2],
         )
-        for user in split.keys() - old_split.keys()
+        for user in split.keys() - old_split_participants
     )
 
 
@@ -300,7 +337,9 @@ def settle_up(
         payer,
         date,
         amount,
-        {payee: (1, 0)},
+        {payee: ("1", 0)},
+        Decimal(1),
+        "$",
         _is_settle_up=True,
     )
 
@@ -315,7 +354,9 @@ def update_settle_up(
         payer,
         date,
         amount,
-        {payee: (1, 0)},
+        {payee: ("1", 0)},
+        Decimal(1),
+        "$",
     )
 
 

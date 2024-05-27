@@ -111,6 +111,7 @@ class ExpenseSplit(models.Model):
     expense = models.ForeignKey(Expense, on_delete=models.CASCADE)
     # FIXME: cascade?
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    shares_expr = models.TextField()
     shares = models.IntegerField()
     adjustment = models.IntegerField(default=0)
 

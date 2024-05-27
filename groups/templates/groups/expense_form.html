@@ -93,13 +93,14 @@ legend + .form-row.form-row {
         </label>
 
         {% for field in form.split_fields %}
-            <div class="form-row split-field-container">
+            <div class="form-row">
                 {{ field.errors }}
-                {{ field.label_tag }}
-                {{ field }}
+                <div class="split-field-container">
+                    {{ field.label_tag }}
+                    {{ field }}
+                </div>
             </div>
         {% endfor %}
-        <button id="evalButton" hidden="hidden" type="button">Evil</button>
     </fieldset>
 
     <div class="form-row">
@@ -113,7 +114,9 @@ legend + .form-row.form-row {
     </div>
 </form>
 
-<script>
+<script type="module">
+import * as expr from "/static/expr.js";
+
 const form = expenseForm;
 const typeField = form.type;
 const amountField = form.elements.amount;
@@ -122,6 +125,38 @@ const splitFields = [...form.elements].filter(el => el.name.startsWith("split_")
 const EXACT = "1",
     PERCENTAGE = "2",
     SHARES = "3";
+
+function evalFields() {
+    for (const oldError of document.getElementsByClassName("eval-error")) {
+        oldError.remove();
+    }
+
+    const results = [];
+    for (const field of splitFields) {
+        const fieldValue = field.value.trim() || "0";
+        let evaled, error;
+        try {
+            evaled = expr.evaluate(fieldValue);
+        } catch (e) {
+            error = e.toString();
+        }
+        if (error) {
+            const formRow = field.closest(".form-row");
+            let errorlist = formRow?.querySelector(".errorlist");
+            if (!errorlist) {
+                errorlist = document.createElement("ul");
+                errorlist.classList.add("errorlist");
+                formRow?.prepend(errorlist);
+            }
+            const newError = document.createElement("li");
+            newError.classList.add("eval-error");
+            newError.innerText = error;
+            errorlist.append(newError);
+        }
+        results.push(evaled ?? 0);
+    }
+    return results;
+}
 
 function updateRemaining() {
     let el = document.getElementById("remaining-amount");
@@ -139,10 +174,10 @@ function updateRemaining() {
 
     if (isExact) {
         const currencySymbol = currencySymbolField.value || "$";
-        const remaining = parseFloat(amountField.value || 0) - splitFields.reduce((acc, el) => acc + parseFloat(el.value || 0), 0);
+        const remaining = parseFloat(amountField.value || 0) - evalFields().reduce((acc, el) => acc + el, 0);
         el.innerText = `${currencySymbol}${remaining.toFixed(2)} remaining`;
     } else {
-        const remaining = 100 - splitFields.reduce((acc, el) => acc + Math.floor(parseFloat(el.value || 0)), 0);
+        const remaining = 100 - evalFields().reduce((acc, el) => acc + Math.floor(el), 0);
         el.innerText = `${remaining}% remaining`;
     }
 }
@@ -174,22 +209,10 @@ function applySplitEqually() {
     }
 }
 
-function runEval() {
-    splitFields.forEach(field => field.value = field.value ? eval(field.value) : "");
-}
-
-function updateEvalButtonShow() {
-    const showButton = splitFields.some(field => isNaN(field.value));
-    evalButton.hidden = !showButton;
-}
-
 typeField.addEventListener("change", updateRemaining);
 typeField.addEventListener("change", hideAdjustmentsForExact);
 amountField.addEventListener("input", updateRemaining);
-splitFields.forEach(field => field.addEventListener("input", updateRemaining));
-
-splitFields.forEach(field => field.addEventListener("input", updateEvalButtonShow));
-evalButton.onclick = runEval;
+splitFields.forEach(field => field.addEventListener("change", updateRemaining));
 
 toggleAdjustments.checked = splitFields.some(field => field.name.endsWith("_adjustment") && parseFloat(field.value || 0) !== 0);
 toggleAdjustments.addEventListener("change", hideAdjustmentsForExact);
