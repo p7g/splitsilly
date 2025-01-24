@@ -1,6 +1,7 @@
 import errno
 import fcntl
 import hashlib
+import signal
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -11,6 +12,10 @@ lock_dir.mkdir(exist_ok=True)
 
 
 class LockNotAcquired(Exception):
+    pass
+
+
+class LockTimeout(Exception):
     pass
 
 
@@ -31,6 +36,7 @@ def _timeout(seconds: int | float) -> Iterator[None]:
 
 class Lock:
     def __init__(self, key: str) -> None:
+        self.key = key
         hashed_key = hashlib.new("md5", key.encode()).hexdigest()
         self.file = open(lock_dir / hashed_key, "wb")
 
@@ -48,8 +54,11 @@ class Lock:
             return self._acquire(blocking=blocking)
 
         assert blocking
-        with _timeout(timeout):
-            return self._acquire(blocking=True)
+        try:
+            with _timeout(timeout):
+                return self._acquire(blocking=True)
+        except InterruptedError as e:
+            raise LockTimeout(self.key) from e
 
     def _acquire(self, blocking: bool = True) -> "Lock":
         cmd = fcntl.LOCK_EX
@@ -65,7 +74,7 @@ class Lock:
                 elif blocking:
                     continue
                 else:
-                    raise LockNotAcquired(self.key)
+                    raise LockNotAcquired(self.key) from exc
         return self
 
     def release(self) -> None:
