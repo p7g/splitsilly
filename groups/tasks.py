@@ -47,7 +47,7 @@ def send_group_invite_consumed_email(invite_id: int) -> None:
         subject=f"{invite.consumed_by.username} accepted your invite to {invite.group.name} on Splitsilly",
         message=plaintext_message,
         from_email=settings.EMAIL_FROM_ADDRESS,
-        recipient_list[invite.sender.email],
+        recipient_list=[invite.sender.email],
         html_message=html_message,
     )
 
