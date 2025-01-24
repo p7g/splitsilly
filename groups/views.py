@@ -8,6 +8,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.generic import CreateView, DeleteView, FormView, UpdateView
 
+from splitsilly.utils.lock import Lock
+
 from .api import (
     add_expense_group_user,
     calculate_debts,
@@ -266,15 +268,15 @@ def invite_detail_view(request, invite_id):
 
 @login_required
 def consume_invite_view(request, invite_id):
-    invite = get_valid_invite(invite_id)
-    if not invite:
-        return render(request, "groups/invite_invalid.html")
+    with Lock(str(invite_id)):
+        invite = get_valid_invite(invite_id)
+        if not invite:
+            return render(request, "groups/invite_invalid.html")
 
-    # FIXME: race condition
-    if not invite.group.expensegroupuser_set.filter(user=request.user).exists():
-        add_expense_group_user(invite.group, request.user)
-    invite.consumed_by = request.user
-    invite.save(update_fields=["updated_at", "consumed_by"])
+        if not invite.group.expensegroupuser_set.filter(user=request.user).exists():
+            add_expense_group_user(invite.group, request.user)
+        invite.consumed_by = request.user
+        invite.save(update_fields=["updated_at", "consumed_by"])
 
     send_group_invite_consumed_email(invite.id)
 
