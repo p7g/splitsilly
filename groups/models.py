@@ -146,7 +146,7 @@ class ExpenseGroupInvite(models.Model):
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name="+")
     recipient = models.EmailField()
     consumed_by = models.ForeignKey(
-        User, on_delete=models.CASCADE, null=True, related_name="+"
+        User, on_delete=models.CASCADE, null=True, blank=True, related_name="+"
     )
 
     def get_absolute_url(self):
