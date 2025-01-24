@@ -1,0 +1,1 @@
+{{ invite.consumed_by.username }} accepted your invite to the {{ invite.group.name }} group on Splitsilly.

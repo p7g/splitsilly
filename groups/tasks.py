@@ -32,6 +32,27 @@ def send_group_invite_email(invite_id: int) -> None:
 
 
 @db_task()
+def send_group_invite_consumed_email(invite_id: int) -> None:
+    invite = ExpenseGroupInvite.objects.select_related("sender", "group", "consumed_by").get(id=invite_id)
+    assert invite.consumed_by is not None
+
+    context = {
+        "invite": invite,
+    }
+
+    plaintext_message = render_to_string("email/group_invite_consumed.txt", context)
+    html_message = render_to_string("email/group_invite_consumed.html", context)
+
+    send_mail(
+        subject=f"{invite.consumed_by.username} accepted your invite to {invite.group.name} on Splitsilly",
+        message=plaintext_message,
+        from_email=settings.EMAIL_FROM_ADDRESS,
+        recipient_list[invite.sender.email],
+        html_message=html_message,
+    )
+
+
+@db_task()
 def send_expense_added_emails(expense_id: int, actor_user_id: int) -> None:
     actor = User.objects.get(id=actor_user_id)
     expense = Expense.objects.get(id=expense_id)

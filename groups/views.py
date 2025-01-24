@@ -24,7 +24,7 @@ from .forms import (
     SettleUpForm,
 )
 from .models import Expense, ExpenseGroup, ExpenseGroupInvite
-from .tasks import send_expense_added_emails, send_expense_updated_emails
+from .tasks import send_expense_added_emails, send_expense_updated_emails, send_group_invite_consumed_email
 
 
 @login_required
@@ -272,6 +272,8 @@ def consume_invite_view(request, invite_id):
         add_expense_group_user(invite.group, request.user)
     invite.consumed_by = request.user
     invite.save(update_fields=["updated_at", "consumed_by"])
+
+    send_group_invite_consumed_email(invite.id)
 
     return redirect(invite.group)
 
