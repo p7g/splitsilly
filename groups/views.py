@@ -240,7 +240,10 @@ class GroupSettings(LoginRequiredMixin, UpdateView):
 
 
 def get_valid_invite(invite_id):
-    return ExpenseGroupInvite.objects.get(id=invite_id, consumed_by=None)
+    try:
+        return ExpenseGroupInvite.objects.get(id=invite_id, consumed_by=None)
+    except ExpenseGroupInvite.DoesNotExist:
+        return None
 
 
 def invite_detail_view(request, invite_id):
