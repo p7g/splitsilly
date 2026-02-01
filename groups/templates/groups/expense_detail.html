@@ -3,6 +3,17 @@
 
 {% block title %}{{ expense.name }} | Splitsilly{% endblock %}
 
+{% block head %}
+<style>
+.note {
+    white-space: pre;
+    margin-left: 0;
+    padding: 0 0 0 8px;
+    border-left: 3px solid lightgrey;
+}
+</style>
+{% endblock %}
+
 {% block body %}
 <h1>{{ expense.name }} on {{ expense.date.isoformat }}</h1>
 <a href="{{ expense.group.get_absolute_url }}">Back</a>
@@ -17,6 +28,10 @@
     <li>{{ user }} owes {{ amount|to_dollars }}</li>
     {% endfor %}
 </ul>
+
+{% if expense.note %}
+<blockquote class="note">{{ expense.note }}</blockquote>
+{% endif %}
 
 <h2>Split</h2>
 

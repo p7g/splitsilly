@@ -87,6 +87,7 @@ class Expense(models.Model):
     is_settle_up = models.BooleanField(default=False)
     exchange_rate = models.DecimalField(max_digits=20, decimal_places=10, default=1)
     currency_symbol = models.TextField(default="$")
+    note = models.TextField(default="", blank=True)
 
     objects = models.Manager.from_queryset(ExpenseQuerySet)()
 

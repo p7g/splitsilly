@@ -100,6 +100,7 @@ def create_expense(
     split: RawSplit,
     exchange_rate: Decimal,
     currency_symbol: str,
+    note: str = "",
     _is_settle_up: bool = False,
 ) -> Expense:
     evaled_split = _evaluate_split(type_, split)
@@ -140,6 +141,7 @@ def update_expense(
     split: RawSplit,
     exchange_rate: Decimal,
     currency_symbol: str,
+    note: str,
 ) -> None:
     evaled_split = _evaluate_split(type_, split)
     validate_expense_split(type_, amount, evaled_split)
@@ -151,6 +153,7 @@ def update_expense(
     expense.amount = amount
     expense.exchange_rate = exchange_rate
     expense.currency_symbol = currency_symbol
+    expense.note = note
     expense.save()
 
     old_split_participants = {
@@ -354,6 +357,7 @@ def settle_up(
         {payee: ("1", 0)},
         Decimal(1),
         "$",
+        note="",
         _is_settle_up=True,
     )
 
@@ -371,6 +375,7 @@ def update_settle_up(
         {payee: ("1", 0)},
         Decimal(1),
         "$",
+        "",
     )
 
 

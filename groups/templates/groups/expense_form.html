@@ -110,6 +110,12 @@ legend + .form-row.form-row {
     </div>
 
     <div class="form-row">
+        {{ form.note.errors }}
+        {{ form.note.label_tag }}
+        {{ form.note }}
+    </div>
+
+    <div class="form-row">
         <input type="submit" value="Save" />
     </div>
 </form>
