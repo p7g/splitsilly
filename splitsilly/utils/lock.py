@@ -2,10 +2,11 @@ import errno
 import fcntl
 import hashlib
 import signal
-import time
+import types
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Never
 
 lock_dir = Path(__file__).parent.parent.parent / "_locks"
 lock_dir.mkdir(exist_ok=True)
@@ -20,8 +21,8 @@ class LockTimeout(Exception):
 
 
 @contextmanager
-def _timeout(seconds: int | float) -> Iterator[None]:
-    def timeout_handler(signum, frame):
+def _timeout(seconds: int) -> Iterator[None]:
+    def timeout_handler(signum: int, frame: types.FrameType | None) -> Never:
         raise InterruptedError
 
     original_handler = signal.signal(signal.SIGALRM, timeout_handler)
@@ -46,10 +47,15 @@ class Lock:
     def __enter__(self) -> None:
         self.acquire()
 
-    def __exit__(self, exc_type, exc_value, traceback) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: types.TracebackType | None,
+    ) -> None:
         self.release()
 
-    def acquire(self, blocking: bool = True, timeout: int | float = None) -> "Lock":
+    def acquire(self, blocking: bool = True, timeout: int | None = None) -> "Lock":
         if timeout is None:
             return self._acquire(blocking=blocking)
 

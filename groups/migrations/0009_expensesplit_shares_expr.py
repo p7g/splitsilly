@@ -3,7 +3,7 @@
 from django.db import migrations, models
 
 
-def copy_shares_to_shares_expr(apps, schema_editor):
+def copy_shares_to_shares_expr(apps, schema_editor):  # type: ignore[no-untyped-def]
     ExpenseSplit = apps.get_model("groups", "expensesplit")
 
     ExpenseSplit.objects.all().update(shares_expr=models.F("shares"))

@@ -1,5 +1,6 @@
 import copy
 from decimal import Decimal
+from typing import Any, cast
 
 from django import forms
 from django.core.exceptions import ValidationError
@@ -16,7 +17,6 @@ from .api import (
     money_to_float,
     settle_up,
     shares_are_money,
-    sync_expense_group_users,
     update_expense,
     update_settle_up,
     validate_expense_split,
@@ -25,20 +25,20 @@ from .models import Expense, ExpenseGroup
 
 
 class ListField(forms.MultiValueField):
-    def compress(self, data_list):
+    def compress(self, data_list: Any) -> Any:
         return data_list
 
 
 class MoneyField(forms.DecimalField):
     widget = forms.NumberInput(attrs={"type": "number"})
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs, decimal_places=2)
 
-    def clean(self, value):
+    def clean(self, value: Any) -> Any:
         return float_to_money(super().clean(value))
 
-    def widget_attrs(self, widget):
+    def widget_attrs(self, widget: forms.Widget) -> dict[str, Any]:
         attrs = super().widget_attrs(widget)
         return attrs | {"type": "number"}
 
@@ -46,7 +46,7 @@ class MoneyField(forms.DecimalField):
 class SplitWidget(forms.MultiWidget):
     template_name = "groups/widgets/split_widget.html"
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             {
                 "split": forms.NumberInput(attrs={"type": "text", "step": "any"}),
@@ -54,25 +54,25 @@ class SplitWidget(forms.MultiWidget):
             }
         )
 
-    def decompress(self, value):
+    def decompress(self, value: Any) -> Any:
         return value
 
 
 class SplitField(forms.MultiValueField):
     widget = SplitWidget
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         fields = (
             forms.CharField(initial="0"),
             MoneyField(initial=0),
         )
         super().__init__(fields=fields, **kwargs)
 
-    def compress(self, data_list):
+    def compress(self, data_list: Any) -> Any:
         return tuple(data_list)
 
 
-class ExpenseForm(forms.ModelForm):
+class ExpenseForm(forms.ModelForm[Expense]):
     class Meta:
         model = Expense
         fields = ("group", "date", "type", "name", "payer", "amount", "exchange_rate")
@@ -85,7 +85,7 @@ class ExpenseForm(forms.ModelForm):
     amount = MoneyField(min_value=0)
     currency_symbol = forms.CharField(max_length=5, required=True, initial="$")
 
-    def __init__(self, *, group: ExpenseGroup, **kwargs):
+    def __init__(self, *, group: ExpenseGroup, **kwargs: Any) -> None:
         self._group = group
         user_queryset = User.objects.filter(
             Exists(group.expensegroupuser_set.filter(user_id=OuterRef("pk")))
@@ -112,7 +112,8 @@ class ExpenseForm(forms.ModelForm):
         super().__init__(**kwargs, initial=initial)
 
         self._users = users
-        self.fields["payer"].queryset = user_queryset
+        payer_field = cast(forms.ModelChoiceField[User], self.fields["payer"])
+        payer_field.queryset = user_queryset
         self.fields["group"].initial = group.id
 
         self.split_fields = []
@@ -122,7 +123,7 @@ class ExpenseForm(forms.ModelForm):
             self.fields[field_key] = field
             self.split_fields.append(self[field_key])
 
-    def clean(self):
+    def clean(self) -> None:
         super().clean()
 
         split_by_user = {}
@@ -130,14 +131,14 @@ class ExpenseForm(forms.ModelForm):
         for user in self._users:
             shares, adjustment = self.cleaned_data[f"split_{user.username}"]
             try:
-                evaled_shares = expr.evaluate(shares)
+                evaled_shares_d = expr.evaluate(shares)
             except Exception as e:
                 self.add_error(f"split_{user.username}", str(e))
-                evaled_shares = Decimal(0)
+                evaled_shares_d = Decimal(0)
             if shares_are_money(self.cleaned_data["type"]):
-                evaled_shares = float_to_money(evaled_shares)
+                evaled_shares = float_to_money(evaled_shares_d)
             else:
-                evaled_shares = int(evaled_shares)
+                evaled_shares = int(evaled_shares_d)
             evaled_split_by_user[user] = (shares, evaled_shares, adjustment)
             split_by_user[user] = (shares, adjustment)
 
@@ -146,7 +147,7 @@ class ExpenseForm(forms.ModelForm):
         )
         self.cleaned_data["split"] = split_by_user
 
-    def save(self, commit=True):
+    def save(self, commit: bool = True) -> Expense:
         if not commit:
             raise NotImplementedError
 
@@ -168,7 +169,7 @@ class ExpenseForm(forms.ModelForm):
             return create_expense(self.cleaned_data["group"], **expense_data)
 
 
-class SettleUpForm(forms.ModelForm):
+class SettleUpForm(forms.ModelForm[Expense]):
     class Meta:
         model = Expense
         fields = ("group", "date", "payer", "amount")
@@ -180,7 +181,7 @@ class SettleUpForm(forms.ModelForm):
     payee = forms.ModelChoiceField(queryset=User.objects.none())
     amount = MoneyField(min_value=0)
 
-    def __init__(self, *, group: ExpenseGroup, **kwargs):
+    def __init__(self, *, group: ExpenseGroup, **kwargs: Any) -> None:
         self._group = group
         user_queryset = User.objects.filter(
             Exists(group.expensegroupuser_set.filter(user_id=OuterRef("pk")))
@@ -201,11 +202,15 @@ class SettleUpForm(forms.ModelForm):
 
         super().__init__(**kwargs, initial=initial)
         self._users = users
-        self.fields["payer"].queryset = user_queryset
-        self.fields["payee"].queryset = user_queryset
+        cast(
+            forms.ModelChoiceField[User], self.fields["payer"]
+        ).queryset = user_queryset
+        cast(
+            forms.ModelChoiceField[User], self.fields["payee"]
+        ).queryset = user_queryset
         self.fields["group"].initial = group.id
 
-    def save(self, *args, **kwargs):
+    def save(self, *args: Any, **kwargs: Any) -> Expense:
         if self.instance.pk:
             update_settle_up(
                 self.instance,
@@ -226,7 +231,7 @@ class SettleUpForm(forms.ModelForm):
 
 
 class CommaSeparatedCharField(forms.Field):
-    def to_python(self, value):
+    def to_python(self, value: Any) -> Any:
         if value in self.empty_values:
             return []
         value = str(value).strip()
@@ -236,13 +241,13 @@ class CommaSeparatedCharField(forms.Field):
         value = (item.strip() for item in value.split(","))
         return list(set(filter(None, value)))
 
-    def prepare_value(self, value):
+    def prepare_value(self, value: Any) -> Any:
         if isinstance(value, str):
             return value
         return ", ".join(value)
 
 
-class ExpenseGroupForm(forms.ModelForm):
+class ExpenseGroupForm(forms.ModelForm[ExpenseGroup]):
     class Meta:
         model = ExpenseGroup
         fields = "__all__"
@@ -251,7 +256,7 @@ class ExpenseGroupForm(forms.ModelForm):
         }
 
 
-class ExpenseGroupSettingsForm(forms.ModelForm):
+class ExpenseGroupSettingsForm(forms.ModelForm[ExpenseGroup]):
     class Meta:
         model = ExpenseGroup
         fields = (
@@ -262,17 +267,17 @@ class ExpenseGroupSettingsForm(forms.ModelForm):
             "name": forms.TextInput,
         }
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
         self.fields["simplify_debts"].label_suffix = ""
 
 
 class EmailListValidator:
-    def __init__(self):
+    def __init__(self) -> None:
         self.email_validator = EmailValidator()
 
-    def __call__(self, value):
+    def __call__(self, value: Any) -> None:
         assert isinstance(value, list)
 
         if not value:
@@ -292,7 +297,7 @@ class EmailListValidator:
 
 class GroupInviteForm(forms.Form):
     emails = CommaSeparatedCharField(
-        validators=[EmailValidator],
+        validators=[EmailValidator()],
         widget=forms.Textarea,
         help_text="Enter as a comma-separated list.",
     )

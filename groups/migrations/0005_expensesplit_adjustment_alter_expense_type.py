@@ -5,7 +5,7 @@ from django.db import migrations, models
 import groups.models
 
 
-def convert_adjustment_to_shares(apps, schema_editor):
+def convert_adjustment_to_shares(apps, schema_editor):  # type: ignore[no-untyped-def]
     Expense = apps.get_model("groups", "Expense")
 
     for expense in Expense.objects.filter(type=groups.models.Expense.Type.ADJUSTMENT):

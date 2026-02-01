@@ -2,7 +2,7 @@ import operator
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from decimal import Decimal
 from enum import Enum, auto
-from typing import Final, Generic, Literal, NamedTuple, TypeAlias, TypeVar
+from typing import Final, Generic, Literal, NamedTuple, Never, TypeAlias, TypeVar
 
 
 class Location(NamedTuple):
@@ -150,7 +150,7 @@ class _UnaryOp(NamedTuple):
     operation: Callable[[Decimal], Decimal]
 
 
-def _undefined(*args):
+def _undefined(*args: object) -> Never:
     raise Exception("Operation not defined")
 
 
@@ -169,6 +169,7 @@ _UNARY_OPS: Final[Mapping[TokenType, _UnaryOp]] = {
 
 
 def _evaluate_expr(env: Env, tokens: Peekable[Token], rbp: int = 0) -> Decimal:
+    tok: Token | None
     try:
         tok = next(tokens)
     except StopIteration:
@@ -176,8 +177,7 @@ def _evaluate_expr(env: Env, tokens: Peekable[Token], rbp: int = 0) -> Decimal:
     left = _nud(env, tokens, tok)
     while (tok := tokens.peek()) and (
         # If the token isn't a valid binop let _led handle the error
-        tok.type not in _BINARY_OPS
-        or rbp < _BINARY_OPS[tok.type].lbp
+        tok.type not in _BINARY_OPS or rbp < _BINARY_OPS[tok.type].lbp
     ):
         left = _led(env, tokens, left, next(tokens))
     return left

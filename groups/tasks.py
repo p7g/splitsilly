@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
-from huey.contrib.djhuey import db_task
+from huey.contrib.djhuey import db_task  # type: ignore[import-untyped]
 
 from groups.api import calculate_expense_debts
 from groups.models import Expense, ExpenseGroupInvite
@@ -9,8 +9,8 @@ from groups.templatetags.money import to_dollars
 from identity.models import User
 
 
-@db_task()
-def send_group_invite_email(invite_id: int) -> None:
+@db_task()  # type: ignore[untyped-decorator]
+def send_group_invite_email(invite_id: str) -> None:
     invite = ExpenseGroupInvite.objects.select_related("sender", "group").get(
         id=invite_id
     )
@@ -31,9 +31,11 @@ def send_group_invite_email(invite_id: int) -> None:
     )
 
 
-@db_task()
-def send_group_invite_consumed_email(invite_id: int) -> None:
-    invite = ExpenseGroupInvite.objects.select_related("sender", "group", "consumed_by").get(id=invite_id)
+@db_task()  # type: ignore[untyped-decorator]
+def send_group_invite_consumed_email(invite_id: str) -> None:
+    invite = ExpenseGroupInvite.objects.select_related(
+        "sender", "group", "consumed_by"
+    ).get(id=invite_id)
     assert invite.consumed_by is not None
 
     context = {
@@ -52,7 +54,7 @@ def send_group_invite_consumed_email(invite_id: int) -> None:
     )
 
 
-@db_task()
+@db_task()  # type: ignore[untyped-decorator]
 def send_expense_added_emails(expense_id: int, actor_user_id: int) -> None:
     actor = User.objects.get(id=actor_user_id)
     expense = Expense.objects.get(id=expense_id)
@@ -79,7 +81,7 @@ def send_expense_added_emails(expense_id: int, actor_user_id: int) -> None:
             )
 
 
-@db_task()
+@db_task()  # type: ignore[untyped-decorator]
 def send_expense_updated_emails(expense_id: int, actor_user_id: int) -> None:
     actor = User.objects.get(id=actor_user_id)
     expense = Expense.objects.get(id=expense_id)

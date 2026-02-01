@@ -64,7 +64,7 @@ def evaluate_split(type_: Expense.Type, split: RawSplit) -> Split:
     return result
 
 
-def validate_expense_split(type_: Expense.Type, amount: int, split: Split):
+def validate_expense_split(type_: Expense.Type, amount: int, split: Split) -> None:
     if type_ == Expense.Type.EXACT:
         total = sum(shares + adjustment for _, shares, adjustment in split.values())
         if amount != total:
@@ -227,7 +227,9 @@ def _calculate_expense_debts(expense: Expense) -> dict[User, int]:
     return {split.user: debt[split.user] + split.adjustment for split in splits}
 
 
-def _apply_exchange_rate(debts: Debts, exchange_rate: Decimal) -> Debts:
+def _apply_exchange_rate[K](
+    debts: dict[K, int], exchange_rate: Decimal
+) -> dict[K, int]:
     return {user: int(amount * exchange_rate) for user, amount in debts.items()}
 
 
@@ -244,9 +246,8 @@ def simplify_debts(debts: Debts) -> Debts:
         sentry_sdk.capture_message(
             "Failed to simplify debts after 10 tries", level="error"
         )
-    with tracer.current_span() as span:
-        if span:
-            span.set_tag("iterations", i)
+    if span := tracer.current_span():
+        span.set_tag("iterations", i)
     return debts
 
 

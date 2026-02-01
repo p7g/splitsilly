@@ -13,10 +13,12 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 import os
 from pathlib import Path
 
+import django_stubs_ext
 import sentry_sdk
 from dotenv import load_dotenv
 
 load_dotenv()
+django_stubs_ext.monkeypatch()
 
 ENV = os.getenv("ENV")
 VERSION = os.getenv("VERSION")
@@ -35,7 +37,7 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 DEBUG = ENV == "dev"
 
 ALLOWED_HOSTS = [os.getenv("DJANGO_HOST")]
-ROOT_URL = os.getenv("ROOT_URL")
+ROOT_URL = os.getenv("ROOT_URL", "")
 
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True

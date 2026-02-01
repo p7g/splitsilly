@@ -1,5 +1,6 @@
 import enum
 from urllib.parse import urljoin
+from typing import Self
 from uuid import uuid4
 
 from django.conf import settings
@@ -12,8 +13,8 @@ from identity.models import User
 from .templatetags.money import to_dollars
 
 
-class ExpenseGroupQuerySet(models.QuerySet):
-    def for_user(self, user: User):
+class ExpenseGroupQuerySet(models.QuerySet["ExpenseGroup"]):
+    def for_user(self, user: User) -> Self:
         return self.filter(
             Exists(
                 ExpenseGroupUser.objects.filter(user=user, group=OuterRef("pk")).values(
@@ -32,7 +33,7 @@ class ExpenseGroup(models.Model):
 
     objects = models.Manager.from_queryset(ExpenseGroupQuerySet)()
 
-    def get_absolute_url(self):
+    def get_absolute_url(self) -> str:
         return reverse("groups:group", args=(self.id,))
 
 
@@ -47,8 +48,8 @@ class ExpenseGroupUser(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
 
-class ExpenseQuerySet(models.QuerySet):
-    def for_user(self, user: User):
+class ExpenseQuerySet(models.QuerySet["Expense"]):
+    def for_user(self, user: User) -> Self:
         return self.filter(
             Exists(
                 ExpenseGroup.objects.for_user(user)
@@ -100,7 +101,7 @@ class Expense(models.Model):
         else:
             raise NotImplementedError(self.type)
 
-    def get_absolute_url(self):
+    def get_absolute_url(self) -> str:
         return reverse("groups:expense", args=(self.id,))
 
 
@@ -149,7 +150,7 @@ class ExpenseGroupInvite(models.Model):
         User, on_delete=models.CASCADE, null=True, blank=True, related_name="+"
     )
 
-    def get_absolute_url(self):
+    def get_absolute_url(self) -> str:
         return urljoin(
             settings.ROOT_URL, reverse("groups:invite_detail", args=(str(self.id),))
         )
