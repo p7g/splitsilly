@@ -4,11 +4,8 @@ from datetime import date
 from decimal import Decimal
 
 import sentry_sdk
-from ddtrace import tracer
-from django.conf import settings
+from ddtrace.trace import tracer
 from django.core.exceptions import ValidationError
-from django.core.mail import send_mail
-from django.template.loader import render_to_string
 
 from identity.models import User
 from splitsilly.utils import expr
