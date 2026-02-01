@@ -18,12 +18,12 @@ dependencies = [
     "ipython>=8.17.2,<9",
     "python-dotenv>=1.0.0,<2",
     "gunicorn>=21.2.0,<22",
-    "sentry-sdk[django]>=1.40.0,<2",
     "ddtrace>=2.6.0,<3",
     "django-timezone-field>=6.1.0,<7",
     "yarl>=1.9.4,<2",
     "huey>=2.5.0,<3",
     "django-stubs-ext>=5.2.9",
+    "sentry-sdk[django]>=2",
 ]
 
 [dependency-groups]
