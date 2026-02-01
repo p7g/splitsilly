@@ -39,8 +39,8 @@ DEBUG = ENV == "dev"
 ALLOWED_HOSTS = [os.getenv("DJANGO_HOST")]
 ROOT_URL = os.getenv("ROOT_URL", "")
 
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = ENV != "dev"
+SESSION_COOKIE_SECURE = ENV != "dev"
 SECURE_SSL_REDIRECT = ENV != "dev"
 
 # Application definition

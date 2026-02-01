@@ -16,7 +16,6 @@ from .api import (
     float_to_money,
     money_to_float,
     settle_up,
-    shares_are_money,
     update_expense,
     update_settle_up,
     validate_expense_split,
@@ -131,14 +130,10 @@ class ExpenseForm(forms.ModelForm[Expense]):
         for user in self._users:
             shares, adjustment = self.cleaned_data[f"split_{user.username}"]
             try:
-                evaled_shares_d = expr.evaluate(shares)
+                evaled_shares = expr.evaluate(shares)
             except Exception as e:
                 self.add_error(f"split_{user.username}", str(e))
-                evaled_shares_d = Decimal(0)
-            if shares_are_money(self.cleaned_data["type"]):
-                evaled_shares = float_to_money(evaled_shares_d)
-            else:
-                evaled_shares = int(evaled_shares_d)
+                evaled_shares = Decimal(0)
             evaled_split_by_user[user] = (shares, evaled_shares, adjustment)
             split_by_user[user] = (shares, adjustment)
 
