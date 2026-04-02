@@ -99,6 +99,7 @@ class ExpenseForm(forms.ModelForm[Expense]):
         if instance:
             initial["amount"] = money_to_float(instance.amount)
             initial["currency_symbol"] = instance.currency_symbol
+            initial["note"] = instance.note
 
             for split in instance.expensesplit_set.select_related("user"):
                 adjustment = money_to_float(split.adjustment)

@@ -114,6 +114,7 @@ def create_expense(
         amount=amount,
         exchange_rate=exchange_rate,
         currency_symbol=currency_symbol,
+        note=note,
         is_settle_up=_is_settle_up,
     )
 
