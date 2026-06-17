@@ -295,7 +295,7 @@ class EmailListValidator:
 
 class GroupInviteForm(forms.Form):
     emails = CommaSeparatedCharField(
-        validators=[EmailValidator()],
+        validators=[EmailListValidator()],
         widget=forms.Textarea,
         help_text="Enter as a comma-separated list.",
     )
